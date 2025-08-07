@@ -1,0 +1,86 @@
+package fiberauth
+
+import (
+	"bytes"
+	"fmt"
+	"text/template"
+)
+
+// RenderRedirectHTML renders the redirect HTML template with the provided parameters.
+// This function generates an HTML page that handles OAuth callback redirects and
+// stores authentication data in localStorage.
+//
+// Parameters:
+//   - params: Optional map of parameters to pass to the template (e.g., jsData for authentication response)
+//
+// Returns:
+//   - string: The rendered HTML string
+//
+// Example:
+//
+//	html := auth.RenderRedirectHTML(fiber.Map{
+//	    "jsData": `{"user": {...}, "tokens": {...}}`,
+//	})
+//	// Returns HTML that handles OAuth redirect and stores auth data
+func (a *Authorization) RenderRedirectHTML(params ...map[string]any) string {
+	if len(params) == 0 || params[0] == nil {
+		return "Error: No parameters provided for redirect HTML."
+	}
+
+	t, err := template.New("indexauth.html").Parse(string(`<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redirecting...</title>
+    <script>
+        const authData = {{.jsData }}
+        const currentState = JSON.parse(window.localStorage.getItem("authorization-storage") ?? "{}");
+
+        console.log("Data", authData);
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const appDiv = document.getElementById("app");
+
+            if (authData?.error?.message) {
+                appDiv.innerHTML = "<center><h2 style='color: red;'>" + authData.error.message + "</h2></center>";
+            } else {
+                appDiv.innerHTML = "<span>Authentication successful. Redirecting... " + currentState?.state?.redirectUrl + "</span>";
+                window.localStorage.setItem("authorization-storage", JSON.stringify({
+                    ...currentState,
+                    state: {
+                        ...currentState?.state,
+                        isSignedIn: true,
+                        ...authData
+                    }
+                }));
+                setTimeout(() => {
+                    console.log("Redirecting to:", currentState?.state?.redirectUrl || "/");
+                    window.location.replace(currentState?.state?.redirectUrl || "/");
+                }, 500);
+            }
+
+        });
+    </script>
+</head>
+
+<body>
+    <div id="app"></div>
+</body>
+
+</html>`))
+	if err != nil {
+		return fmt.Sprintf("Error parsing template: %v", err)
+	}
+
+	var buf bytes.Buffer
+	ct := map[string]any{}
+	if len(params) > 0 {
+		ct = params[0]
+	}
+	if err := t.Execute(&buf, ct); err != nil {
+		return fmt.Sprintf("Error executing template: %v", err)
+	}
+	return buf.String()
+}
