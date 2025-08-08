@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/izetmolla/fiberauth/social"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"github.com/izetmolla/fiberauth/social"
 )
 
 // AuthorizationInterface defines the interface for authorization operations.
@@ -76,6 +76,10 @@ type AuthorizationInterface interface {
 	// HandleRefreshTokenController handles the HTTP request for token refresh.
 	// Returns a fiber error for HTTP response handling.
 	HandleRefreshTokenController(c fiber.Ctx) error
+
+	// GetCookieSessionName returns the name of the cookie session.
+	// Returns the name of the cookie session.
+	GetCookieSessionName() string
 }
 
 // Authorization implements the AuthorizationInterface and provides

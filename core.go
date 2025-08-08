@@ -46,7 +46,7 @@ func (a *Authorization) setDefaults() {
 	if a.redisPrefix == "" {
 		a.redisPrefix = defaultRedisPrefix
 	}
-	if a.cookieSessionName != "" && os.Getenv("COOKIE_SESSION_NAME") == "" {
+	if a.cookieSessionName == "" || os.Getenv("COOKIE_SESSION_NAME") == "" {
 		a.cookieSessionName = defaultCookieSessionName
 	}
 	if a.mainDomainName != "" && os.Getenv("AUTH_DOMAIN") == "" {

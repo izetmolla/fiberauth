@@ -36,6 +36,26 @@ func (a *Authorization) SetSessionCookie(c fiber.Ctx, sessionID string) {
 	c.Cookie(cookie)
 }
 
+// RemoveSessionCookie removes the session cookie from the HTTP response.
+// Removes the session cookie from the HTTP response.
+//
+// Parameters:
+//   - c: Fiber context containing the HTTP response
+//
+// Example:
+//
+//	auth.RemoveSessionCookie(c)
+//	// Removes the session cookie from the HTTP response
+func (a *Authorization) RemoveSessionCookie(c fiber.Ctx) {
+	cookie := new(fiber.Cookie)
+	cookie.Name = a.cookieSessionName
+	cookie.Value = ""
+	cookie.Domain = fmt.Sprintf(".%s", a.mainDomainName)
+	cookie.Path = "/"
+	cookie.Expires = time.Now().Add(-time.Hour)
+	c.Cookie(cookie)
+}
+
 // =============================================================================
 // SESSION MANAGER
 // =============================================================================
@@ -78,4 +98,8 @@ func (sm *SessionManager) CreateAuthorizationResponse(user *User, tokens *Tokens
 		SessionID: sessionID,
 		Tokens:    *tokens,
 	}
+}
+
+func (sm *SessionManager) GetCookieSessionName() string {
+	return sm.auth.cookieSessionName
 }
