@@ -69,9 +69,10 @@ func (a *Authorization) ErrorJSON(err error, field ...string) fiber.Map {
 //	errorString := auth.JSONErrorString(errors.New("invalid token"))
 //	// Returns: `{"error":{"message":"invalid token"}}`
 func (a *Authorization) JSONErrorString(message error) string {
-	msg := ""
-	if message != nil {
-		msg = message.Error()
+	jsonBytes, err := json.Marshal(a.ErrorJSON(err))
+	if err != nil {
+		// fallback in case of error during marshaling
+		return `{"error":{"message":"internal error"}}`
 	}
-	return fmt.Sprintf(`{"error":{"message":"%s"}}`, msg)
+	return string(jsonBytes)
 }
