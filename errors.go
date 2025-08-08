@@ -1,8 +1,8 @@
 package fiberauth
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/gofiber/fiber/v3"
 )
@@ -68,7 +68,7 @@ func (a *Authorization) ErrorJSON(err error, field ...string) fiber.Map {
 //
 //	errorString := auth.JSONErrorString(errors.New("invalid token"))
 //	// Returns: `{"error":{"message":"invalid token"}}`
-func (a *Authorization) JSONErrorString(message error) string {
+func (a *Authorization) JSONErrorString(err error) string {
 	jsonBytes, err := json.Marshal(a.ErrorJSON(err))
 	if err != nil {
 		// fallback in case of error during marshaling
