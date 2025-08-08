@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"slices"
 
@@ -417,10 +418,16 @@ func (a *Authorization) hasRequiredRoleFromJSON(requiredRoles []string, userRole
 // Returns:
 //   - string: The redirect URL
 func (a *Authorization) getAuthRedirectURL(c fiber.Ctx) string {
-	if redirectURL := c.Query("redirect_url"); redirectURL != "" {
-		return redirectURL
+	currentURL := url.QueryEscape(c.OriginalURL())
+	if a.authRedirectURL == "" {
+		scheme := "http"
+		if c.Protocol() == "https" || c.Secure() {
+			scheme = "https"
+		}
+
+		return fmt.Sprintf("%s://%s/sign-in?redirectUrl=%s", scheme, c.Hostname(), currentURL)
 	}
-	return a.authRedirectURL
+	return fmt.Sprintf("%s?redirectUrl=%s", a.authRedirectURL, currentURL)
 }
 
 func userResponse(user *User) map[string]any {
