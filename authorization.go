@@ -157,3 +157,7 @@ func New(config *Config) (*Authorization, error) {
 func (a *Authorization) GetJWTSecret() string {
 	return a.jwtSecret
 }
+
+func (a *Authorization) GetCookieSessionName() string {
+	return a.cookieSessionName
+}
