@@ -100,6 +100,13 @@ func (sm *SessionManager) CreateAuthorizationResponse(user *User, tokens *Tokens
 	}
 }
 
+// GetCookieSessionName returns the name of the cookie session.
+// Returns the name of the cookie session.
+// Example:
+//	sessionName := sm.GetCookieSessionName()
+//	// Returns the cookie session name configured in the authorization instance
+//	sessionName will be the value of sm.auth.cookieSessionName
+// This is useful for setting or removing session cookies in HTTP responses.
 func (sm *SessionManager) GetCookieSessionName() string {
 	return sm.auth.cookieSessionName
 }
