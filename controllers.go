@@ -93,7 +93,9 @@ func (a *Authorization) SignInController(c fiber.Ctx) error {
 	}
 
 	res, err := a.SignIn(request)
-	a.SetSessionCookie(c, res.SessionID)
+	if err == nil {
+		a.SetSessionCookie(c, res.SessionID)
+	}
 	return a.handleAuthorizationResponse(c, res, err)
 }
 
@@ -116,7 +118,9 @@ func (a *Authorization) SignUpController(c fiber.Ctx) error {
 	}
 
 	res, err := a.SignUp(request)
-	a.SetSessionCookie(c, res.SessionID)
+	if err == nil {
+		a.SetSessionCookie(c, res.SessionID)
+	}
 	return a.handleAuthorizationResponse(c, res, err)
 }
 
@@ -145,8 +149,9 @@ func (a *Authorization) SignOutController(c fiber.Ctx) error {
 	if err != nil {
 		return a.handleErrorFieldsResponse(c, err, fiber.StatusBadRequest)
 	}
-
-	a.RemoveSessionCookie(c)
+	if err == nil {
+		a.RemoveSessionCookie(c)
+	}
 	return a.handleSuccessResponse(c, res)
 }
 
