@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
@@ -181,8 +182,6 @@ func (a *Authorization) ExtractToken(tokenString string) (*RefreshTokenClaims, e
 	return nil, errors.New("invalid token")
 }
 
-
-
 // =============================================================================
 // USER MANAGEMENT
 // =============================================================================
@@ -196,7 +195,7 @@ func (a *Authorization) ExtractToken(tokenString string) (*RefreshTokenClaims, e
 // Returns:
 func (a *Authorization) findUserByID(id any) (*User, error) {
 	var user User
-	err :=  a.sqlStorage.Model(&User{}).Where("id = ? AND deleted_at IS NULL", id).First(&user).Error
+	err := a.sqlStorage.Model(&User{}).Where("id = ? AND deleted_at IS NULL", id).First(&user).Error
 	if err != nil {
 		return nil, ErrUserNotFound
 	}
@@ -441,13 +440,10 @@ func (a *Authorization) getAuthRedirectURL(c fiber.Ctx) string {
 		scheme = "https"
 	}
 	fullURL := fmt.Sprintf("%s://%s%s", scheme, c.Hostname(), c.OriginalURL())
-	if a.authRedirectURL == "" {
-		scheme := "http"
-		if c.Protocol() == "https" || c.Secure() {
-			scheme = "https"
-		}
 
-		return fmt.Sprintf("%s://%s/sign-in?redirectUrl=%s", scheme, c.Hostname(), url.QueryEscape(fullURL))
+	if a.authRedirectURL == "" {
+		// No redirect URL configured, return empty to avoid redirect loops
+		return ""
 	}
 	return fmt.Sprintf("%s?redirectUrl=%s", a.authRedirectURL, url.QueryEscape(fullURL))
 }
@@ -462,6 +458,24 @@ func (a *Authorization) getAuthRedirectURL(c fiber.Ctx) string {
 //   - string: The session ID
 func (a *Authorization) GetSessionID(c fiber.Ctx) string {
 	return c.Cookies(a.GetCookieSessionName())
+}
+
+// isExcludedPath checks if the current path is excluded from the excluded paths.
+// Returns true if the path is excluded, false otherwise.
+//
+// Parameters:
+//   - excluded: The excluded paths
+//   - path: The current path
+//
+// Returns:
+//   - bool: true if the path is excluded, false otherwise
+func (a *Authorization) isExcludedPath(excluded []string, path string) bool {
+	for _, excludedPath := range excluded {
+		if strings.HasPrefix(path, excludedPath) {
+			return true
+		}
+	}
+	return false
 }
 
 func userResponse(user *User) map[string]any {

@@ -41,10 +41,12 @@ type Config struct {
 }
 
 type AuthConfig struct {
+	ExcludedPaths    []string `json:"excluded_paths" yaml:"excluded_paths"`
 	Roles            []string `json:"roles" yaml:"roles"`
 	Reauthorize      bool     `json:"reauthorize" yaml:"reauthorize"`
 	RedirectToSignIn bool     `json:"redirect_to_sign_in" yaml:"redirect_to_sign_in"`
 	OnlyAPI          bool     `json:"only_api" yaml:"only_api"`
+	Debug            bool     `json:"debug" yaml:"debug"`
 }
 
 // SessionData represents session information stored in Redis or database.

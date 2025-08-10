@@ -19,12 +19,14 @@ import (
 // Returns:
 //   - fiber.Handler: The configured authentication middleware
 func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
-	// Set default configuration if none provided
-	if config == nil {
-		config = &AuthConfig{OnlyAPI: true}
-	}
-
 	return func(c fiber.Ctx) error {
+		if a.isExcludedPath(config.ExcludedPaths, c.Path()) {
+			return c.Next()
+		}
+		// Set default configuration if none provided
+		if config == nil {
+			config = &AuthConfig{OnlyAPI: true}
+		}
 		// Handle API-only endpoints
 		if config.OnlyAPI {
 			return a.handleAPIEndpoint(c, config)
@@ -39,7 +41,10 @@ func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
 func (a *Authorization) handleAPIEndpoint(c fiber.Ctx, config *AuthConfig) error {
 	token, _ := a.GetTokenFromHeader(c)
 	if config.Reauthorize && token == "" {
-		return a.handleWebEndpoint(c, config)
+		// Create a temporary config for web context when reauthorizing
+		webConfig := *config
+		// webConfig.OnlyAPI = false
+		return a.handleWebEndpoint(c, &webConfig)
 	}
 
 	// If reauthorization is not required and roles are specified, use role-based auth
@@ -80,8 +85,25 @@ func (a *Authorization) handleWebEndpoint(c fiber.Ctx, config *AuthConfig) error
 
 // handleUnauthenticatedUser handles unauthenticated user requests
 func (a *Authorization) handleUnauthenticatedUser(c fiber.Ctx, config *AuthConfig) error {
+
 	if config.RedirectToSignIn {
-		return c.Redirect().Status(fiber.StatusMovedPermanently).To(a.getAuthRedirectURL(c))
+		redirectURL := a.getAuthRedirectURL(c)
+		if redirectURL == "" {
+			return c.Next()
+		}
+
+		// Prevent redirect loops by checking if we're already on the auth page
+		currentPath := c.Path()
+		if a.authRedirectURL != "" && currentPath == a.authRedirectURL {
+			if config.Debug {
+				fmt.Printf("handleUnauthenticatedUser(): already on auth page %s, continuing\n", currentPath)
+			}
+			return c.Next()
+		}
+		if config.Debug {
+			fmt.Printf("handleUnauthenticatedUser(): redirecting from %s to %s\n", currentPath, redirectURL)
+		}
+		return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(redirectURL)
 	}
 	return a.respondWithError(c, fiber.StatusUnauthorized, "User not authenticated")
 }
@@ -250,28 +272,26 @@ func (a *Authorization) AllowOnlyFromCookie(roles []string) fiber.Handler {
 
 // handleMissingCookie handles requests with missing session cookies
 func (a *Authorization) handleMissingCookie(c fiber.Ctx) error {
-	// Allow access to auth pages
-	if a.isAuthPage(c.Path()) {
-		return c.Next()
-	}
-
-	// Redirect to sign-in page
+	// Redirect to sign-in page if configured
 	if a.authRedirectURL != "" {
-		return c.Redirect().Status(fiber.StatusMovedPermanently).To(a.getAuthRedirectURL(c))
+		redirectURL := a.getAuthRedirectURL(c)
+		if redirectURL == "" {
+			// Already on auth page, just continue
+			return c.Next()
+		}
+
+		// Prevent redirect loops by checking if we're already on the auth page
+		currentPath := c.Path()
+		if currentPath == a.authRedirectURL {
+			fmt.Printf("handleMissingCookie(): already on auth page %s, continuing\n", currentPath)
+			return c.Next()
+		}
+
+		fmt.Printf("handleMissingCookie(): redirecting from %s to %s\n", currentPath, redirectURL)
+		return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(redirectURL)
 	}
 
 	return a.respondWithError(c, fiber.StatusUnauthorized, "Authentication required")
-}
-
-// isAuthPage checks if the current path is an authentication page
-func (a *Authorization) isAuthPage(path string) bool {
-	authPaths := []string{"/sign-in", "/sign-up"}
-	for _, authPath := range authPaths {
-		if path == authPath {
-			return true
-		}
-	}
-	return false
 }
 
 // respondWithError is a helper function to send consistent error responses
