@@ -67,7 +67,12 @@ func (a *Authorization) AllowOnlyFomCookie(roles []string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		cookie := c.Cookies(a.cookieSessionName)
 		if cookie == "" {
-			return c.Redirect().To(a.getAuthRedirectURL(c))
+			if a.authRedirectURL == "" {
+				if c.Path() == "/sign-in" || c.Path() == "/sign-up" {
+					return c.Next()
+				}
+			}
+			return c.Redirect().Status(fiber.StatusMovedPermanently).To(a.getAuthRedirectURL(c))
 		}
 
 		sessionData, err := a.GetSessionFromDB(cookie)

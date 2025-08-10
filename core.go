@@ -418,16 +418,20 @@ func (a *Authorization) hasRequiredRoleFromJSON(requiredRoles []string, userRole
 // Returns:
 //   - string: The redirect URL
 func (a *Authorization) getAuthRedirectURL(c fiber.Ctx) string {
-	currentURL := url.QueryEscape(c.OriginalURL())
+	scheme := "http"
+	if c.Protocol() == "https" || c.Secure() {
+		scheme = "https"
+	}
+	fullURL := fmt.Sprintf("%s://%s%s", scheme, c.Hostname(), c.OriginalURL())
 	if a.authRedirectURL == "" {
 		scheme := "http"
 		if c.Protocol() == "https" || c.Secure() {
 			scheme = "https"
 		}
 
-		return fmt.Sprintf("%s://%s/sign-in?redirectUrl=%s", scheme, c.Hostname(), currentURL)
+		return fmt.Sprintf("%s://%s/sign-in?redirectUrl=%s", scheme, c.Hostname(), url.QueryEscape(fullURL))
 	}
-	return fmt.Sprintf("%s?redirectUrl=%s", a.authRedirectURL, currentURL)
+	return fmt.Sprintf("%s?redirectUrl=%s", a.authRedirectURL, url.QueryEscape(fullURL))
 }
 
 func userResponse(user *User) map[string]any {
