@@ -1,10 +1,69 @@
 package fiberauth
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
 	jwtware "github.com/izetmolla/fiberauth/jwt"
 )
+
+// UseAuth uses the auth middleware.
+//
+// Parameters:
+//   - config: Configuration struct containing roles, redirect to sign in, and only API
+//
+// Returns:
+//   - fiber.Handler: The auth middleware
+func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
+	if config == nil {
+		config = &AuthConfig{OnlyAPI: true}
+	}
+	fmt.Println("aaaa", config)
+	return func(c fiber.Ctx) error {
+		if config.OnlyAPI {
+			if !config.Reauthorize {
+				if len(config.Roles) > 0 {
+					return a.AllowOnly(config.Roles)(c)
+				}
+				// Call the JWT middleware handler directly and return its result
+				return jwtware.New(jwtware.Config{
+					SigningKey: jwtware.SigningKey{Key: []byte(a.GetJWTSecret())},
+				})(c)
+			}
+		}
+		sessionID := a.GetSessionID(c)
+		if sessionID == "" {
+			if config.RedirectToSignIn {
+				return c.Redirect().Status(fiber.StatusMovedPermanently).To(a.getAuthRedirectURL(c))
+			}
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "User not authenticated",
+			})
+		}
+		session, err := a.GetSession(sessionID)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "User not authenticated",
+			})
+		}
+		if config.OnlyAPI {
+			token := c.Get("Authorization")
+			if token == "" {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+					"error": "Not implemented",
+				})
+			}
+			return c.Next()
+		}
+		if !a.hasRequiredRoleFromJSON(config.Roles, session.Roles) {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Insufficient permissions",
+			})
+		}
+		return c.Next()
+	}
+}
 
 func (a *Authorization) UseAuthorization() fiber.Handler {
 	return jwtware.New(jwtware.Config{

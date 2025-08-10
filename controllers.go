@@ -149,9 +149,7 @@ func (a *Authorization) SignOutController(c fiber.Ctx) error {
 	if err != nil {
 		return a.handleErrorFieldsResponse(c, err, fiber.StatusBadRequest)
 	}
-	if err == nil {
-		a.RemoveSessionCookie(c)
-	}
+	a.RemoveSessionCookie(c)
 	return a.handleSuccessResponse(c, res)
 }
 

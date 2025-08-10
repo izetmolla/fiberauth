@@ -80,6 +80,18 @@ type AuthorizationInterface interface {
 	// GetCookieSessionName returns the name of the cookie session.
 	// Returns the name of the cookie session.
 	GetCookieSessionName() string
+
+	// GetSessionID gets the session ID from the cookie.
+	// Returns the session ID.
+	GetSessionID(c fiber.Ctx) string
+
+	// GetSession gets the session from the database.
+	// Returns the session.
+	GetSession(sessionID string) (*SessionData, error)
+
+	// UseAuth uses the auth middleware.
+	// Returns a fiber handler.
+	UseAuth(config *AuthConfig) fiber.Handler
 }
 
 // Authorization implements the AuthorizationInterface and provides

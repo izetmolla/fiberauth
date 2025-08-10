@@ -9,6 +9,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+func (a *Authorization) GetSession(sessionID string) (*SessionData, error) {
+	return a.GetSessionFromDB(sessionID)
+}
+
 // GetSessionFromRedis retrieves session data from Redis cache.
 // Returns the session data if found, or redis.Nil if not found.
 //

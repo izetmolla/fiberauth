@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/izetmolla/fiberauth/social"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"github.com/izetmolla/fiberauth/social"
 )
 
 // Config holds the configuration for the Authorization service.
@@ -38,6 +38,13 @@ type Config struct {
 	GitHubRedirectURL  *string `json:"github_redirect_url" yaml:"github_redirect_url"`
 
 	Providers []social.Provider
+}
+
+type AuthConfig struct {
+	Roles            []string `json:"roles" yaml:"roles"`
+	Reauthorize      bool     `json:"reauthorize" yaml:"reauthorize"`
+	RedirectToSignIn bool     `json:"redirect_to_sign_in" yaml:"redirect_to_sign_in"`
+	OnlyAPI          bool     `json:"only_api" yaml:"only_api"`
 }
 
 // SessionData represents session information stored in Redis or database.

@@ -434,6 +434,18 @@ func (a *Authorization) getAuthRedirectURL(c fiber.Ctx) string {
 	return fmt.Sprintf("%s?redirectUrl=%s", a.authRedirectURL, url.QueryEscape(fullURL))
 }
 
+// GetSessionID gets the session ID from the cookie.
+// Returns the session ID.
+//
+// Parameters:
+//   - c: Fiber context containing the request
+//
+// Returns:
+//   - string: The session ID
+func (a *Authorization) GetSessionID(c fiber.Ctx) string {
+	return c.Cookies(a.GetCookieSessionName())
+}
+
 func userResponse(user *User) map[string]any {
 	return map[string]any{
 		"id":         user.ID,
