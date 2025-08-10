@@ -181,9 +181,27 @@ func (a *Authorization) ExtractToken(tokenString string) (*RefreshTokenClaims, e
 	return nil, errors.New("invalid token")
 }
 
+
+
 // =============================================================================
 // USER MANAGEMENT
 // =============================================================================
+
+// findUserByID finds a user by their ID.
+// Returns the user if found, or an error if not found.
+//
+// Parameters:
+//   - id: The ID of the user to search for
+//
+// Returns:
+func (a *Authorization) findUserByID(id any) (*User, error) {
+	var user User
+	err :=  a.sqlStorage.Model(&User{}).Where("id = ? AND deleted_at IS NULL", id).First(&user).Error
+	if err != nil {
+		return nil, ErrUserNotFound
+	}
+	return &user, nil
+}
 
 // findUser searches for a user by email or username.
 // Returns the user if found, or an error if not found.
@@ -200,9 +218,9 @@ func (a *Authorization) findUser(email string, username string) (*User, error) {
 	query := a.sqlStorage.Model(&User{})
 
 	if email != "" {
-		query = query.Where("email = ?", email)
+		query = query.Where("email = ? AND deleted_at IS NULL", email)
 	} else if username != "" {
-		query = query.Where("username = ?", username)
+		query = query.Where("username = ? AND deleted_at IS NULL", username)
 	} else {
 		return nil, errors.New("email or username is required")
 	}

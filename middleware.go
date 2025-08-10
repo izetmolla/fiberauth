@@ -50,8 +50,43 @@ func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
 		if config.OnlyAPI {
 			token := c.Get("Authorization")
 			if token == "" {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-					"error": "Not implemented",
+				user, err := a.findUserByID(session.UserID)
+				if err != nil || user == nil {
+					return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+						"error": "User not authenticated",
+					})
+				}
+
+				// Generate tokens
+				accessToken, refreshToken, err := a.GenerateJWT(&JWTOptions{
+					SessionID: sessionID,
+					UserID:    user.ID,
+					Metadata:  user.Metadata,
+					Roles:     user.Roles,
+				})
+				if err != nil {
+					return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+						"error": err.Error(),
+					})
+				}
+
+				// Create and store session
+				sessionManager := NewSessionManager(a)
+				if err := sessionManager.CreateAndStoreSession(user, sessionID); err != nil {
+					return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+						"error": err.Error(),
+					})
+				}
+				var res = sessionManager.CreateAuthorizationResponse(user, &Tokens{
+					AccessToken:  accessToken,
+					RefreshToken: refreshToken,
+				}, sessionID)
+
+				return c.JSON(fiber.Map{
+					"reauthorize": true,
+					"user":        res.User,
+					"tokens":      res.Tokens,
+					"session_id":  res.SessionID,
 				})
 			}
 			return c.Next()
