@@ -19,6 +19,12 @@ import (
 // Returns:
 //   - fiber.Handler: The configured authentication middleware
 func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
+	var jwtcfg jwtware.Config
+	if config.OnlyAPI {
+		jwtcfg = jwtware.MakeCfg(jwtware.Config{
+			SigningKey: jwtware.SigningKey{Key: []byte(a.GetJWTSecret())},
+		})
+	}
 	return func(c fiber.Ctx) error {
 		if a.isExcludedPath(config.ExcludedPaths, c.Path()) {
 			return c.Next()
@@ -29,7 +35,7 @@ func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
 		}
 		// Handle API-only endpoints
 		if config.OnlyAPI {
-			return a.handleAPIEndpoint(c, config)
+			return a.handleAPIEndpoint(c, config, &jwtcfg)
 		}
 
 		// Handle web endpoints with session-based auth
@@ -38,21 +44,33 @@ func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
 }
 
 // handleAPIEndpoint handles authentication for API-only endpoints
-func (a *Authorization) handleAPIEndpoint(c fiber.Ctx, config *AuthConfig) error {
+func (a *Authorization) handleAPIEndpoint(c fiber.Ctx, config *AuthConfig, jwtcfg *jwtware.Config) error {
+
 	token, _ := a.GetTokenFromHeader(c)
 	if config.Reauthorize && token == "" {
 		return a.handleWebEndpoint(c, config)
 	}
 
-	// Use JWT middleware for API authentication
-	return jwtware.New(jwtware.Config{
-		SigningKey: jwtware.SigningKey{Key: []byte(a.GetJWTSecret())},
-	})(c)
+	jwtClaims, err := jwtcfg.GetTokenClaims(c, token)
+	if err != nil {
+		return a.respondWithError(c, fiber.StatusUnauthorized, err.Error())
+	}
 
 	// If reauthorization is not required and roles are specified, use role-based auth
-	// if len(config.Roles) > 0 {
-	// 	return a.AllowOnly(config.Roles)(c)
-	// }
+	if len(config.Roles) > 0 {
+		roles, err := a.extractRolesFromClaims(jwtClaims)
+		if err != nil {
+			fmt.Println("failed to extract roles from JWT claims:", err)
+			return a.respondWithError(c, fiber.StatusForbidden, "Insufficient permissions")
+		}
+
+		// Check if user has required roles
+		if !a.hasRequiredRole(config.Roles, roles) {
+			fmt.Println("user does not have required roles:", config.Roles, "user roles:", roles)
+			return a.respondWithError(c, fiber.StatusForbidden, "Insufficient permissions")
+		}
+	}
+	return c.Next()
 }
 
 // handleWebEndpoint handles authentication for web endpoints with session support

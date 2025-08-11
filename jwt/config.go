@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"time"
 
@@ -164,6 +165,10 @@ func makeCfg(config []Config) (cfg Config) {
 	return cfg
 }
 
+func MakeCfg(config ...Config) Config {
+	return makeCfg(config)
+}
+
 func multiKeyfunc(givenKeys map[string]keyfunc.GivenKey, jwkSetURLs []string) (jwt.Keyfunc, error) {
 	opts := keyfuncOptions(givenKeys)
 	multiple := make(map[string]keyfunc.Options, len(jwkSetURLs))
@@ -229,4 +234,43 @@ func signingKeyFunc(key SigningKey) jwt.Keyfunc {
 		}
 		return key.Key, nil
 	}
+}
+
+// GetTokenClaims extracts and returns the claims from a validated JWT token
+func (cfg *Config) GetTokenClaims(c fiber.Ctx, tokenString string) (jwt.MapClaims, error) {
+	extractors := cfg.getExtractors()
+	var auth string
+	var err error
+
+	for _, extractor := range extractors {
+		auth, err = extractor(c)
+		if auth != "" && err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	var token *jwt.Token
+
+	if _, ok := cfg.Claims.(jwt.MapClaims); ok {
+		token, err = jwt.Parse(auth, cfg.KeyFunc)
+	} else {
+		t := reflect.ValueOf(cfg.Claims).Type().Elem()
+		claims := reflect.New(t).Interface().(jwt.Claims)
+		token, err = jwt.ParseWithClaims(auth, claims, cfg.KeyFunc)
+	}
+	if err == nil && token.Valid {
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if claims["id"] != nil {
+				c.Locals("user_id", claims["id"])
+			}
+			if claims["roles"] != nil {
+				c.Locals("user_id", claims["roles"])
+			}
+		}
+		c.Locals(cfg.ContextKey, token)
+		return token.Claims.(jwt.MapClaims), nil
+	}
+	return nil, err
 }
