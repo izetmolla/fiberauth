@@ -41,21 +41,18 @@ func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
 func (a *Authorization) handleAPIEndpoint(c fiber.Ctx, config *AuthConfig) error {
 	token, _ := a.GetTokenFromHeader(c)
 	if config.Reauthorize && token == "" {
-		// Create a temporary config for web context when reauthorizing
-		webConfig := *config
-		// webConfig.OnlyAPI = false
-		return a.handleWebEndpoint(c, &webConfig)
-	}
-
-	// If reauthorization is not required and roles are specified, use role-based auth
-	if !config.Reauthorize && len(config.Roles) > 0 {
-		return a.AllowOnly(config.Roles)(c)
+		return a.handleWebEndpoint(c, config)
 	}
 
 	// Use JWT middleware for API authentication
 	return jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte(a.GetJWTSecret())},
 	})(c)
+
+	// If reauthorization is not required and roles are specified, use role-based auth
+	// if len(config.Roles) > 0 {
+	// 	return a.AllowOnly(config.Roles)(c)
+	// }
 }
 
 // handleWebEndpoint handles authentication for web endpoints with session support
@@ -66,6 +63,7 @@ func (a *Authorization) handleWebEndpoint(c fiber.Ctx, config *AuthConfig) error
 	}
 
 	session, err := a.GetSession(sessionID)
+
 	if err != nil {
 		return a.respondWithError(c, fiber.StatusUnauthorized, "User not authenticated")
 	}
@@ -181,6 +179,7 @@ func (a *Authorization) AllowOnly(roles []string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		// Extract user from context (set by JWT middleware)
 		user, ok := c.Locals("user").(*jwt.Token)
+		fmt.Printf("AllowOnly(): user: %v, ok: %v\n", user, ok)
 		if !ok {
 			return a.respondWithError(c, fiber.StatusUnauthorized, "User not authenticated")
 		}
