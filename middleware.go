@@ -45,12 +45,14 @@ func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
 
 // handleAPIEndpoint handles authentication for API-only endpoints
 func (a *Authorization) handleAPIEndpoint(c fiber.Ctx, config *AuthConfig, jwtcfg *jwtware.Config) error {
-
 	token, _ := a.GetTokenFromHeader(c)
 	if config.Reauthorize && token == "" {
 		return a.handleWebEndpoint(c, config)
 	}
 
+	if jwtcfg == nil {
+		return a.respondWithError(c, fiber.StatusUnauthorized, "JWT configuration is required")
+	}
 	jwtClaims, err := jwtcfg.GetTokenClaims(c, token)
 	if err != nil {
 		return a.respondWithError(c, fiber.StatusUnauthorized, err.Error())
