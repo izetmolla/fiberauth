@@ -6,6 +6,9 @@ var (
 	// RefreshTokenHandlerIdentifier is the key used to identify refresh token requests
 	RefreshTokenHandlerIdentifier = "cft"
 
+	// ReauthorizeHandlerIdentifier is the key used to identify reauthorization requests
+	ReauthorizeHandlerIdentifier = "cra"
+
 	// defaultAccessTokenLifetime is the default lifetime for access tokens
 	defaultAccessTokenLifetime = "30s"
 

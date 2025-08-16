@@ -46,7 +46,7 @@ func (a *Authorization) UseAuth(config *AuthConfig) fiber.Handler {
 // handleAPIEndpoint handles authentication for API-only endpoints
 func (a *Authorization) handleAPIEndpoint(c fiber.Ctx, config *AuthConfig, jwtcfg *jwtware.Config) error {
 	token, _ := a.GetTokenFromHeader(c)
-	if config.Reauthorize && token == "" {
+	if config.Reauthorize && token == "" && c.Get(ReauthorizeHandlerIdentifier) == "t" {
 		return a.handleWebEndpoint(c, config)
 	}
 
