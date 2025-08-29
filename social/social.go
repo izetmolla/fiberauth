@@ -98,8 +98,9 @@ func createStorage(cnf *SocialDataConfig) StorageInterface {
 // createSessionStore creates a session store with the given storage implementation.
 func createSessionStore(storage StorageInterface) *session.Store {
 	config := session.Config{
-		KeyLookup:      fmt.Sprintf("cookie:%s", SessionName),
+		// KeyLookup:      fmt.Sprintf("cookie:%s", SessionName),
 		CookieHTTPOnly: true,
+		Extractor:      session.FromCookie(SessionName),
 	}
 
 	if storage != nil {
