@@ -239,3 +239,17 @@ func (a *Authorization) FormatRoles(dbRoles json.RawMessage) []string {
 	}
 	return roles
 }
+
+func GetUser(userInterface any) (*Claims, error) {
+	if userInterface == nil {
+		return nil, errors.New("user not found in context")
+	}
+
+	// Type assert to Claims
+	claims, ok := userInterface.(*Claims)
+	if !ok {
+		return nil, errors.New("invalid user claims type")
+	}
+
+	return claims, nil
+}
