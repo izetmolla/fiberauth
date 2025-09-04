@@ -240,6 +240,23 @@ func (a *Authorization) FormatRoles(dbRoles json.RawMessage) []string {
 	return roles
 }
 
+// GetUser extracts the user claims from the provided interface.
+// It returns an error if the user is not found or if the type assertion fails.
+//
+// Parameters:
+//   - userInterface: The interface containing user claims (typically from context)
+//
+// Returns:
+//   - *Claims: Pointer to Claims struct if successful
+//   - error: Error if user not found or type assertion fails
+//
+// Example:
+//
+//	claims, err := GetUser(ctx.Value("user"))
+//	if err != nil {
+//	    // Handle error
+//	}
+
 func GetUser(userInterface any) (*Claims, error) {
 	if userInterface == nil {
 		return nil, errors.New("user not found in context")
@@ -247,6 +264,57 @@ func GetUser(userInterface any) (*Claims, error) {
 
 	// Type assert to Claims
 	claims, ok := userInterface.(*Claims)
+	if !ok {
+		return nil, errors.New("invalid user claims type")
+	}
+
+	return claims, nil
+}
+
+// GetUser is a method on Authorization that extracts user claims from the provided interface.
+// It wraps the standalone GetUser function for convenience.
+//
+// Parameters:
+//   - userInterface: The interface containing user claims (typically from context)
+//
+// Returns:
+//   - *Claims: Pointer to Claims struct if successful
+//   - error: Error if user not found or type assertion fails
+//
+// Example:
+//
+//	claims, err := auth.GetUser(ctx.Value("user"))
+//	if err != nil {
+//	    // Handle error
+//	}
+func (*Authorization) GetUser(userInterface any) (*Claims, error) {
+	return GetUser(userInterface)
+}
+
+// GetLocalUser extracts the user claims from the provided interface.
+// It returns an error if the user is not found or if the type assertion fails.
+//
+// Parameters:
+//   - userInterface: The interface containing user claims (typically from context)
+//
+// Returns:
+//   - *Claims: Pointer to Claims struct if successful
+//   - error: Error if user not found or type assertion fails
+//
+// Example:
+//
+//	claims, err := GetLocalUser(ctx.Value("user"))
+//	if err != nil {
+//	    // Handle error
+//	}
+
+func GetLocalUser[T any](userInterface any) (*T, error) {
+	if userInterface == nil {
+		return nil, errors.New("user not found in context")
+	}
+
+	// Type assert to Claims
+	claims, ok := userInterface.(*T)
 	if !ok {
 		return nil, errors.New("invalid user claims type")
 	}
