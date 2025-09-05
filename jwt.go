@@ -264,51 +264,46 @@ func GetUser(userInterface any) (*Claims, error) {
 	}
 
 	// First try direct type assertion to Claims
-	// if claims, ok := userInterface.(*Claims); ok {
-	// 	return claims, nil
-	// }
+	if claims, ok := userInterface.(*Claims); ok {
+		return claims, nil
+	}
 
 	// Try to handle JWT token structure using reflection
 	// The userInterface appears to be a struct with fields
 	userValue := reflect.ValueOf(userInterface)
-	if userValue.Kind() == reflect.Ptr {
+	if userValue.Kind() == reflect.Pointer {
 		userValue = userValue.Elem()
 	}
 
 	if userValue.Kind() == reflect.Struct {
-		// Look for a claims field (4th field based on your output)
-		if userValue.NumField() >= 4 {
-			claimsField := userValue.Field(3) // 4th field (0-indexed)
-			if claimsField.Kind() == reflect.Map {
-				claimsMap := claimsField.Interface().(map[string]any)
+		for i := 0; i < userValue.NumField(); i++ {
+			if i == 3 {
+				claimObj := userValue.Field(i).Interface()
+
+				// Try different type assertions for the interface
+				var claimsBytes []byte
+				var err error
+
+				// Try string first
+				if str, ok := claimObj.(string); ok {
+					claimsBytes = []byte(str)
+				} else if bytes, ok := claimObj.([]byte); ok {
+					claimsBytes = bytes
+				} else if jsonRaw, ok := claimObj.(json.RawMessage); ok {
+					claimsBytes = []byte(jsonRaw)
+				} else {
+					// Try to marshal the interface to JSON first
+					claimsBytes, err = json.Marshal(claimObj)
+					if err != nil {
+						return nil, fmt.Errorf("failed to marshal claims: %w", err)
+					}
+				}
+
 				claims := &Claims{}
-
-				// Extract user_id
-				if userID, ok := claimsMap["user_id"].(string); ok {
-					claims.UserID = userID
+				err = json.Unmarshal(claimsBytes, &claims)
+				if err != nil {
+					return nil, fmt.Errorf("failed to unmarshal claims: %w", err)
 				}
-
-				// Extract metadata
-				if metadata, ok := claimsMap["metadata"]; ok {
-					if metadataBytes, err := json.Marshal(metadata); err == nil {
-						claims.Metadata = json.RawMessage(metadataBytes)
-					}
-				}
-
-				// Extract roles
-				if roles, ok := claimsMap["roles"]; ok {
-					if rolesBytes, err := json.Marshal(roles); err == nil {
-						claims.Roles = json.RawMessage(rolesBytes)
-					}
-				}
-
-				// Extract expiration
-				if exp, ok := claimsMap["exp"]; ok {
-					if expFloat, ok := exp.(float64); ok {
-						claims.ExpiresAt = jwt.NewNumericDate(time.Unix(int64(expFloat), 0))
-					}
-				}
-
 				return claims, nil
 			}
 		}
