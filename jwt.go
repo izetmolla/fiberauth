@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -262,13 +263,58 @@ func GetUser(userInterface any) (*Claims, error) {
 		return nil, errors.New("user not found in context")
 	}
 
-	// Type assert to Claims
-	claims, ok := userInterface.(*Claims)
-	if !ok {
-		return nil, errors.New("invalid user claims type")
+	// First try direct type assertion to Claims
+	// if claims, ok := userInterface.(*Claims); ok {
+	// 	return claims, nil
+	// }
+
+	// Try to handle JWT token structure using reflection
+	// The userInterface appears to be a struct with fields
+	userValue := reflect.ValueOf(userInterface)
+	if userValue.Kind() == reflect.Ptr {
+		userValue = userValue.Elem()
 	}
 
-	return claims, nil
+	if userValue.Kind() == reflect.Struct {
+		// Look for a claims field (4th field based on your output)
+		if userValue.NumField() >= 4 {
+			claimsField := userValue.Field(3) // 4th field (0-indexed)
+			if claimsField.Kind() == reflect.Map {
+				claimsMap := claimsField.Interface().(map[string]any)
+				claims := &Claims{}
+
+				// Extract user_id
+				if userID, ok := claimsMap["user_id"].(string); ok {
+					claims.UserID = userID
+				}
+
+				// Extract metadata
+				if metadata, ok := claimsMap["metadata"]; ok {
+					if metadataBytes, err := json.Marshal(metadata); err == nil {
+						claims.Metadata = json.RawMessage(metadataBytes)
+					}
+				}
+
+				// Extract roles
+				if roles, ok := claimsMap["roles"]; ok {
+					if rolesBytes, err := json.Marshal(roles); err == nil {
+						claims.Roles = json.RawMessage(rolesBytes)
+					}
+				}
+
+				// Extract expiration
+				if exp, ok := claimsMap["exp"]; ok {
+					if expFloat, ok := exp.(float64); ok {
+						claims.ExpiresAt = jwt.NewNumericDate(time.Unix(int64(expFloat), 0))
+					}
+				}
+
+				return claims, nil
+			}
+		}
+	}
+
+	return nil, errors.New("invalid user claims type")
 }
 
 // GetUser is a method on Authorization that extracts user claims from the provided interface.
