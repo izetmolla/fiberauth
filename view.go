@@ -37,6 +37,10 @@ func (a *Authorization) RenderRedirectHTML(params ...map[string]any) string {
     <script>
         const authData = {{.jsData }}
         const currentState = JSON.parse(window.localStorage.getItem("authorization-storage") ?? "{}");
+        // Get redirectUrl from query params
+        const params = new URLSearchParams(window.location.search);
+        const redirectUrl = params.get("redirectUrl") || currentState?.state?.redirectUrl || "/";
+
 
         console.log("Data", authData);
 
@@ -46,7 +50,7 @@ func (a *Authorization) RenderRedirectHTML(params ...map[string]any) string {
             if (authData?.error?.message) {
                 appDiv.innerHTML = "<center><h2 style='color: red;'>" + authData.error.message + "</h2></center>";
             } else {
-                appDiv.innerHTML = "<span>Authentication successful. Redirecting... " + currentState?.state?.redirectUrl + "</span>";
+                appDiv.innerHTML = "<span>Authentication successful. Redirecting... " + redirectUrl + "</span>";
                 window.localStorage.setItem("authorization-storage", JSON.stringify({
                     ...currentState,
                     state: {
@@ -56,8 +60,8 @@ func (a *Authorization) RenderRedirectHTML(params ...map[string]any) string {
                     }
                 }));
                 setTimeout(() => {
-                    console.log("Redirecting to:", currentState?.state?.redirectUrl || "/");
-                    window.location.replace(currentState?.state?.redirectUrl || "/");
+                    console.log("Redirecting to:", redirectUrl);
+                    window.location.replace(redirectUrl);
                 }, 500);
             }
 
