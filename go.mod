@@ -17,6 +17,14 @@ require (
 )
 
 require (
+	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
+	github.com/go-webauthn/x v0.1.23 // indirect
+	github.com/google/go-tpm v0.9.5 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
+)
+
+require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
@@ -25,6 +33,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
+	github.com/go-webauthn/webauthn v0.13.4
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gofiber/schema v1.6.0 // indirect
 	github.com/gofiber/utils/v2 v2.0.0-rc.1 // indirect
