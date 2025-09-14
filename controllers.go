@@ -263,3 +263,74 @@ func (a *Authorization) ProviderCallBackController(c fiber.Ctx) error {
 		"jsData": string(jsonData),
 	}))
 }
+
+// =============================================================================
+// PASSKEY CONTROLLERS
+// =============================================================================
+
+// PasskeyBeginRegistrationController handles the HTTP request for passkey begin-registration endpoint
+// Initiates the passkey registration process by generating WebAuthn challenge options.
+//
+// Parameters:
+//   - c: Fiber context containing the HTTP request
+//
+// Returns:
+//   - error: Fiber error for HTTP response handling
+//
+// Example:
+//
+//	app.Post("/passkey/begin-registration", auth.PasskeyBeginRegistrationController)
+func (a *Authorization) PasskeyBeginRegistrationController(c fiber.Ctx) error {
+	// Since we removed the controller methods from the passkey provider,
+	// we need to implement this directly or create a proper interface
+	// For now, return a not implemented error
+	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
+		"success": false,
+		"message": "Passkey begin registration not yet implemented in main controller",
+	})
+}
+
+// PasskeyFinishRegistrationController handles the HTTP request for passkey finish-registration endpoint
+// Completes the passkey registration process by verifying the WebAuthn credential response.
+//
+// Parameters:
+//   - c: Fiber context containing the HTTP request
+//
+// Returns:
+//   - error: Fiber error for HTTP response handling
+//
+// Example:
+//
+//	app.Post("/passkey/finish-registration", auth.PasskeyFinishRegistrationController)
+func (a *Authorization) PasskeyFinishRegistrationController(c fiber.Ctx) error {
+	// Since we removed the controller methods from the passkey provider,
+	// we need to implement this directly or create a proper interface
+	// For now, return a not implemented error
+	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
+		"success": false,
+		"message": "Passkey finish registration not yet implemented in main controller",
+	})
+}
+
+// PasskeyBeginLoginController handles the HTTP request for passkey begin-login endpoint
+// Initiates the passkey authentication process by generating WebAuthn assertion options.
+//
+// Parameters:
+//   - c: Fiber context containing the HTTP request
+//
+// Returns:
+//   - error: Fiber error for HTTP response handling
+//
+// Example:
+//
+//	app.Post("/passkey/begin-login", auth.PasskeyBeginLoginController)
+//	app.Get("/passkey/begin-login", auth.PasskeyBeginLoginController)
+func (a *Authorization) PasskeyBeginLoginController(c fiber.Ctx) error {
+	// Since we removed the controller methods from the passkey provider,
+	// we need to implement this directly or create a proper interface
+	// For now, return a not implemented error
+	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
+		"success": false,
+		"message": "Passkey begin login not yet implemented in main controller",
+	})
+}

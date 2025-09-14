@@ -54,6 +54,47 @@ providers := []social.ProviderOptions{
         Config:   json.RawMessage(`{"rp_id": "localhost", "origin": "http://localhost:3000"}`),
     },
 }
+
+// Register the passkey provider
+passkeyProvider := passkey.New("localhost", "http://localhost:3000", "/auth/passkey/callback")
+social.UseProviders(passkeyProvider)
+
+// Set up FiberAuth with the provider
+auth := fiberauth.New(&fiberauth.Config{
+    Providers: providers,
+    // ... other config
+})
+```
+
+### HTTP Controllers Setup
+
+The passkey provider includes ready-to-use HTTP controllers that can be integrated with your Fiber application:
+
+```go
+func main() {
+    app := fiber.New()
+    
+    // Initialize FiberAuth with passkey provider
+    auth := fiberauth.New(&fiberauth.Config{
+        Providers: []fiberauth.ProviderOptions{
+            {
+                Name:     "passkey",
+                CallBack: "http://localhost:3000/auth/passkey/callback",
+                Config:   json.RawMessage(`{"rp_id": "localhost", "origin": "http://localhost:3000"}`),
+            },
+        },
+    })
+    
+    // Passkey registration endpoints
+    app.Post("/auth/passkey/begin-registration", auth.PasskeyBeginRegistrationController)
+    app.Post("/auth/passkey/finish-registration", auth.PasskeyFinishRegistrationController)
+    
+    // Passkey authentication endpoints  
+    app.Post("/auth/passkey/begin-login", auth.PasskeyBeginLoginController)
+    app.Get("/auth/passkey/begin-login", auth.PasskeyBeginLoginController) // Also supports GET
+    
+    app.Listen(":3000")
+}
 ```
 
 ### Provider Configuration

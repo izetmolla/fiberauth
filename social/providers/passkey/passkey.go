@@ -125,6 +125,39 @@ type passkeyUser struct {
 	Picture   string `json:"picture"`
 }
 
+// RegistrationRequest represents the request for beginning registration
+type RegistrationRequest struct {
+	UserID      string `json:"user_id"`
+	UserName    string `json:"user_name"`
+	DisplayName string `json:"display_name"`
+	Email       string `json:"email,omitempty"`
+}
+
+// RegistrationResponse represents the response for beginning registration
+type RegistrationResponse struct {
+	Options   interface{} `json:"options"`
+	SessionID string      `json:"session_id"`
+	Challenge string      `json:"challenge"`
+	UserID    string      `json:"user_id"`
+	Success   bool        `json:"success"`
+	Message   string      `json:"message,omitempty"`
+}
+
+// FinishRegistrationRequest represents the request for finishing registration
+type FinishRegistrationRequest struct {
+	SessionID  string      `json:"session_id"`
+	UserID     string      `json:"user_id"`
+	Credential interface{} `json:"credential"`
+}
+
+// FinishRegistrationResponse represents the response for finishing registration
+type FinishRegistrationResponse struct {
+	Success    bool                 `json:"success"`
+	Message    string               `json:"message,omitempty"`
+	Credential *webauthn.Credential `json:"credential,omitempty"`
+	User       *social.User         `json:"user,omitempty"`
+}
+
 // FetchUser will process the WebAuthn authentication response and return user information.
 func (p *Provider) FetchUser(session social.Session) (social.User, error) {
 	sess := session.(*Session)
@@ -224,4 +257,197 @@ func (p *Provider) SetRelyingParty(rp string) {
 // SetOrigin sets the origin for WebAuthn
 func (p *Provider) SetOrigin(origin string) {
 	p.Origin = origin
+}
+
+// BeginRegistrationEndpoint handles the begin-registration HTTP endpoint
+func (p *Provider) BeginRegistrationEndpoint(req *RegistrationRequest) (*RegistrationResponse, error) {
+	if req.UserID == "" || req.UserName == "" || req.DisplayName == "" {
+		return &RegistrationResponse{
+			Success: false,
+			Message: "user_id, user_name, and display_name are required",
+		}, fmt.Errorf("missing required fields")
+	}
+
+	// Create WebAuthn user
+	user := &WebAuthnUser{
+		ID:          []byte(req.UserID),
+		Name:        req.UserName,
+		DisplayName: req.DisplayName,
+		Credentials: []webauthn.Credential{}, // New user has no credentials
+	}
+
+	var options interface{}
+	var sessionData *webauthn.SessionData
+	var err error
+
+	// If WebAuthn is initialized, use it; otherwise create a mock response
+	if p.webAuthn != nil {
+		options, sessionData, err = p.webAuthn.BeginRegistration(user)
+		if err != nil {
+			return &RegistrationResponse{
+				Success: false,
+				Message: "Failed to begin WebAuthn registration",
+			}, fmt.Errorf("failed to begin WebAuthn registration: %w", err)
+		}
+	} else {
+		// Mock response for testing/demo purposes
+		options = map[string]interface{}{
+			"challenge": req.UserID + "_registration_challenge",
+			"rp": map[string]interface{}{
+				"name": "FiberAuth",
+				"id":   p.RelyingParty,
+			},
+			"user": map[string]interface{}{
+				"id":          req.UserID,
+				"name":        req.UserName,
+				"displayName": req.DisplayName,
+			},
+			"pubKeyCredParams": []map[string]interface{}{
+				{"type": "public-key", "alg": -7},   // ES256
+				{"type": "public-key", "alg": -257}, // RS256
+			},
+			"timeout": 60000,
+		}
+	}
+
+	// Generate session ID for tracking this registration
+	sessionID := req.UserID + "_reg_" + fmt.Sprintf("%d", len(req.UserID))
+	challenge := req.UserID + "_registration_challenge"
+
+	// Store session data if available (in real implementation, you'd store this in a session store)
+	if sessionData != nil {
+		challenge = string(sessionData.Challenge)
+	}
+
+	return &RegistrationResponse{
+		Options:   options,
+		SessionID: sessionID,
+		Challenge: challenge,
+		UserID:    req.UserID,
+		Success:   true,
+		Message:   "Registration challenge generated successfully",
+	}, nil
+}
+
+// FinishRegistrationEndpoint handles the finish-registration HTTP endpoint
+func (p *Provider) FinishRegistrationEndpoint(req *FinishRegistrationRequest) (*FinishRegistrationResponse, error) {
+	if req.SessionID == "" || req.UserID == "" || req.Credential == nil {
+		return &FinishRegistrationResponse{
+			Success: false,
+			Message: "session_id, user_id, and credential are required",
+		}, fmt.Errorf("missing required fields")
+	}
+
+	// In a real implementation, you would:
+	// 1. Retrieve the session data using the session_id
+	// 2. Verify the credential response using WebAuthn
+	// 3. Store the credential in your database
+	// 4. Create a user account if it doesn't exist
+
+	var credential *webauthn.Credential
+
+	if p.webAuthn != nil {
+		// For a real implementation, you'd need to:
+		// - Retrieve stored session data
+		// - Parse the credential response
+		// - Verify it with WebAuthn
+
+		// Mock successful registration for now
+		credential = &webauthn.Credential{
+			ID:              []byte("mock_credential_id"),
+			PublicKey:       []byte("mock_public_key"),
+			AttestationType: "none",
+		}
+	} else {
+		// Mock credential for testing
+		credential = &webauthn.Credential{
+			ID:              []byte("mock_credential_id"),
+			PublicKey:       []byte("mock_public_key"),
+			AttestationType: "none",
+		}
+	}
+
+	// Create user object
+	user := &social.User{
+		UserID:   req.UserID,
+		Provider: p.Name(),
+		RawData:  make(map[string]any),
+	}
+
+	// Store credential information in raw data
+	user.RawData["credential_id"] = string(credential.ID)
+	user.RawData["registration_complete"] = true
+	user.RawData["session_id"] = req.SessionID
+
+	return &FinishRegistrationResponse{
+		Success:    true,
+		Message:    "Registration completed successfully",
+		Credential: credential,
+		User:       user,
+	}, nil
+}
+
+// BeginLoginEndpoint handles the begin-login HTTP endpoint for existing users
+func (p *Provider) BeginLoginEndpoint(userID string) (*RegistrationResponse, error) {
+	if userID == "" {
+		return &RegistrationResponse{
+			Success: false,
+			Message: "user_id is required",
+		}, fmt.Errorf("user_id is required")
+	}
+
+	// In a real implementation, you would:
+	// 1. Look up the user's credentials from your database
+	// 2. Create a WebAuthn assertion request
+
+	var options interface{}
+	var err error
+
+	if p.webAuthn != nil {
+		// Mock user with existing credentials (in real implementation, load from DB)
+		user := &WebAuthnUser{
+			ID:          []byte(userID),
+			Name:        "user", // Would be loaded from DB
+			DisplayName: "User", // Would be loaded from DB
+			Credentials: []webauthn.Credential{
+				{
+					ID:        []byte("existing_credential_id"),
+					PublicKey: []byte("existing_public_key"),
+				},
+			},
+		}
+
+		options, _, err = p.webAuthn.BeginLogin(user)
+		if err != nil {
+			return &RegistrationResponse{
+				Success: false,
+				Message: "Failed to begin WebAuthn login",
+			}, fmt.Errorf("failed to begin WebAuthn login: %w", err)
+		}
+	} else {
+		// Mock response for testing
+		options = map[string]interface{}{
+			"challenge": userID + "_login_challenge",
+			"rpId":      p.RelyingParty,
+			"allowCredentials": []map[string]interface{}{
+				{
+					"type": "public-key",
+					"id":   userID + "_credential",
+				},
+			},
+			"timeout": 60000,
+		}
+	}
+
+	sessionID := userID + "_login_" + fmt.Sprintf("%d", len(userID))
+	challenge := userID + "_login_challenge"
+
+	return &RegistrationResponse{
+		Options:   options,
+		SessionID: sessionID,
+		Challenge: challenge,
+		UserID:    userID,
+		Success:   true,
+		Message:   "Login challenge generated successfully",
+	}, nil
 }

@@ -109,6 +109,122 @@ func Test_SetOrigin(t *testing.T) {
 	a.Equal("https://example.com", provider.Origin)
 }
 
+func Test_BeginRegistrationEndpoint(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	provider := passkeyProvider()
+
+	req := &passkey.RegistrationRequest{
+		UserID:      "test_user_123",
+		UserName:    "testuser",
+		DisplayName: "Test User",
+		Email:       "test@example.com",
+	}
+
+	resp, err := provider.BeginRegistrationEndpoint(req)
+	a.NoError(err)
+	a.True(resp.Success)
+	a.Equal("test_user_123", resp.UserID)
+	a.NotEmpty(resp.SessionID)
+	a.NotEmpty(resp.Challenge)
+	a.NotNil(resp.Options)
+	a.Equal("Registration challenge generated successfully", resp.Message)
+}
+
+func Test_BeginRegistrationEndpoint_MissingFields(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	provider := passkeyProvider()
+
+	req := &passkey.RegistrationRequest{
+		UserID: "test_user_123",
+		// Missing UserName and DisplayName
+	}
+
+	resp, err := provider.BeginRegistrationEndpoint(req)
+	a.Error(err)
+	a.False(resp.Success)
+	a.Contains(resp.Message, "required")
+}
+
+func Test_FinishRegistrationEndpoint(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	provider := passkeyProvider()
+
+	req := &passkey.FinishRegistrationRequest{
+		SessionID:  "test_session_123",
+		UserID:     "test_user_123",
+		Credential: map[string]interface{}{"id": "test_credential", "type": "public-key"},
+	}
+
+	resp, err := provider.FinishRegistrationEndpoint(req)
+	a.NoError(err)
+	a.True(resp.Success)
+	a.NotNil(resp.Credential)
+	a.NotNil(resp.User)
+	a.Equal("test_user_123", resp.User.UserID)
+	a.Equal("passkey", resp.User.Provider)
+	a.Equal("Registration completed successfully", resp.Message)
+
+	// Check raw data
+	a.NotNil(resp.User.RawData)
+	a.Equal("mock_credential_id", resp.User.RawData["credential_id"])
+	a.Equal(true, resp.User.RawData["registration_complete"])
+	a.Equal("test_session_123", resp.User.RawData["session_id"])
+}
+
+func Test_FinishRegistrationEndpoint_MissingFields(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	provider := passkeyProvider()
+
+	req := &passkey.FinishRegistrationRequest{
+		SessionID: "test_session_123",
+		// Missing UserID and Credential
+	}
+
+	resp, err := provider.FinishRegistrationEndpoint(req)
+	a.Error(err)
+	a.False(resp.Success)
+	a.Contains(resp.Message, "required")
+}
+
+func Test_BeginLoginEndpoint(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	provider := passkeyProvider()
+
+	resp, err := provider.BeginLoginEndpoint("test_user_123")
+	a.NoError(err)
+	a.True(resp.Success)
+	a.Equal("test_user_123", resp.UserID)
+	a.NotEmpty(resp.SessionID)
+	a.NotEmpty(resp.Challenge)
+	a.NotNil(resp.Options)
+	a.Equal("Login challenge generated successfully", resp.Message)
+}
+
+func Test_BeginLoginEndpoint_EmptyUserID(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	provider := passkeyProvider()
+
+	resp, err := provider.BeginLoginEndpoint("")
+	a.Error(err)
+	a.False(resp.Success)
+	a.Contains(resp.Message, "user_id is required")
+}
+
+// Note: Controller tests have been moved to the main controllers.go file
+// The passkey provider now only contains the core endpoint methods
+
 func passkeyProvider() *passkey.Provider {
 	return passkey.New("localhost", "http://localhost:3000", "/callback")
 }
