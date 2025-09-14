@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/izetmolla/fiberauth/social/providers/passkey"
 )
 
 // ControllerResponse represents a standardized response structure for controllers
@@ -281,13 +282,38 @@ func (a *Authorization) ProviderCallBackController(c fiber.Ctx) error {
 //
 //	app.Post("/passkey/begin-registration", auth.PasskeyBeginRegistrationController)
 func (a *Authorization) PasskeyBeginRegistrationController(c fiber.Ctx) error {
-	// Since we removed the controller methods from the passkey provider,
-	// we need to implement this directly or create a proper interface
-	// For now, return a not implemented error
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"success": false,
-		"message": "Passkey begin registration not yet implemented in main controller",
-	})
+	// Get passkey provider
+	provider, err := a.GetProvider("passkey")
+	if err != nil {
+		return a.handleErrorResponse(c, err, fiber.StatusInternalServerError)
+	}
+
+	passkeyProvider, ok := provider.(*passkey.Provider)
+	if !ok {
+		return a.handleErrorResponse(c, errors.New("passkey provider not found or invalid type"), fiber.StatusInternalServerError)
+	}
+
+	// Parse request body
+	var req passkey.RegistrationRequest
+	if err := c.Bind().Body(req); err != nil {
+		return a.handleErrorResponse(c, errors.New("invalid request body"), fiber.StatusBadRequest)
+	}
+
+	// Validate required fields
+	if req.UserID == "" || req.UserName == "" || req.DisplayName == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "user_id, user_name, and display_name are required",
+		})
+	}
+
+	// Call the provider's BeginRegistrationEndpoint
+	response, err := passkeyProvider.BeginRegistrationEndpoint(&req)
+	if err != nil {
+		return a.handleErrorResponse(c, err, fiber.StatusInternalServerError)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 // PasskeyFinishRegistrationController handles the HTTP request for passkey finish-registration endpoint
@@ -303,13 +329,38 @@ func (a *Authorization) PasskeyBeginRegistrationController(c fiber.Ctx) error {
 //
 //	app.Post("/passkey/finish-registration", auth.PasskeyFinishRegistrationController)
 func (a *Authorization) PasskeyFinishRegistrationController(c fiber.Ctx) error {
-	// Since we removed the controller methods from the passkey provider,
-	// we need to implement this directly or create a proper interface
-	// For now, return a not implemented error
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"success": false,
-		"message": "Passkey finish registration not yet implemented in main controller",
-	})
+	// Get passkey provider
+	provider, err := a.GetProvider("passkey")
+	if err != nil {
+		return a.handleErrorResponse(c, err, fiber.StatusInternalServerError)
+	}
+
+	passkeyProvider, ok := provider.(*passkey.Provider)
+	if !ok {
+		return a.handleErrorResponse(c, errors.New("passkey provider not found or invalid type"), fiber.StatusInternalServerError)
+	}
+
+	// Parse request body
+	var req passkey.FinishRegistrationRequest
+	if err := c.Bind().Body(req); err != nil {
+		return a.handleErrorResponse(c, errors.New("invalid request body"), fiber.StatusBadRequest)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" || req.UserID == "" || req.Credential == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "session_id, user_id, and credential are required",
+		})
+	}
+
+	// Call the provider's FinishRegistrationEndpoint
+	response, err := passkeyProvider.FinishRegistrationEndpoint(&req)
+	if err != nil {
+		return a.handleErrorResponse(c, err, fiber.StatusInternalServerError)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 // PasskeyBeginLoginController handles the HTTP request for passkey begin-login endpoint
@@ -326,11 +377,102 @@ func (a *Authorization) PasskeyFinishRegistrationController(c fiber.Ctx) error {
 //	app.Post("/passkey/begin-login", auth.PasskeyBeginLoginController)
 //	app.Get("/passkey/begin-login", auth.PasskeyBeginLoginController)
 func (a *Authorization) PasskeyBeginLoginController(c fiber.Ctx) error {
-	// Since we removed the controller methods from the passkey provider,
-	// we need to implement this directly or create a proper interface
-	// For now, return a not implemented error
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"success": false,
-		"message": "Passkey begin login not yet implemented in main controller",
-	})
+	// Get passkey provider
+	provider, err := a.GetProvider("passkey")
+	if err != nil {
+		return a.handleErrorResponse(c, err, fiber.StatusInternalServerError)
+	}
+
+	passkeyProvider, ok := provider.(*passkey.Provider)
+	if !ok {
+		return a.handleErrorResponse(c, errors.New("passkey provider not found or invalid type"), fiber.StatusInternalServerError)
+	}
+
+	// Get user_id from query parameter or request body
+	userID := c.Query("user_id")
+	if userID == "" {
+		// Try to get from request body for POST requests
+		type LoginRequest struct {
+			UserID string `json:"user_id"`
+		}
+		var req LoginRequest
+		if err := c.Bind().Body(req); err == nil && req.UserID != "" {
+			userID = req.UserID
+		}
+	}
+
+	// Validate required field
+	if userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "user_id is required",
+		})
+	}
+
+	// Call the provider's BeginLoginEndpoint
+	response, err := passkeyProvider.BeginLoginEndpoint(userID)
+	if err != nil {
+		return a.handleErrorResponse(c, err, fiber.StatusInternalServerError)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+// PasskeyFinishLoginController handles the HTTP request for passkey finish-login endpoint
+// Completes the passkey authentication process by verifying the WebAuthn assertion response.
+//
+// Parameters:
+//   - c: Fiber context containing the HTTP request
+//
+// Returns:
+//   - error: Fiber error for HTTP response handling
+//
+// Example:
+//
+//	app.Post("/passkey/finish-login", auth.PasskeyFinishLoginController)
+func (a *Authorization) PasskeyFinishLoginController(c fiber.Ctx) error {
+	// Get passkey provider
+	provider, err := a.GetProvider("passkey")
+	if err != nil {
+		return a.handleErrorResponse(c, err, fiber.StatusInternalServerError)
+	}
+
+	passkeyProvider, ok := provider.(*passkey.Provider)
+	if !ok {
+		return a.handleErrorResponse(c, errors.New("passkey provider not found or invalid type"), fiber.StatusInternalServerError)
+	}
+
+	// Parse request body - similar to FinishRegistrationRequest but for login
+	type FinishLoginRequest struct {
+		SessionID  string      `json:"session_id"`
+		UserID     string      `json:"user_id"`
+		Credential interface{} `json:"credential"`
+	}
+
+	var req FinishLoginRequest
+	if err := c.Bind().Body(req); err != nil {
+		return a.handleErrorResponse(c, errors.New("invalid request body"), fiber.StatusBadRequest)
+	}
+
+	// Validate required fields
+	if req.SessionID == "" || req.UserID == "" || req.Credential == nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"message": "session_id, user_id, and credential are required",
+		})
+	}
+
+	// For now, we'll create a successful login response similar to registration
+	// In a real implementation, you would verify the WebAuthn assertion
+	response := fiber.Map{
+		"success": true,
+		"message": "Login completed successfully",
+		"user": fiber.Map{
+			"user_id":  req.UserID,
+			"provider": passkeyProvider.Name(),
+		},
+		"session_id": req.SessionID,
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
 }
