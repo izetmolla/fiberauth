@@ -15,6 +15,19 @@ type ControllerResponse struct {
 	Message string      `json:"message,omitempty"`
 }
 
+func (a *Authorization) CheckEmailController(c fiber.Ctx) error {
+	request := new(SignInRequest)
+	if err := a.bindAndValidateRequest(c, request); err != nil {
+		return a.handleErrorResponse(c, err, fiber.StatusBadRequest)
+	}
+
+	response, err := a.CheckEmail(request.Email)
+	if err != nil {
+		return a.handleErrorFieldsResponse(c, err, fiber.StatusOK)
+	}
+	return a.handleSuccessResponse(c, response)
+}
+
 // handleErrorResponse creates a standardized error response for controllers
 func (a *Authorization) handleErrorResponse(c fiber.Ctx, err error, statusCode int) error {
 	if statusCode == 0 {

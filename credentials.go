@@ -1,10 +1,45 @@
 package fiberauth
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 )
+
+// CheckEmail checks if an email is already in use.
+// Returns the user if found, or an error if not found.
+//
+// Parameters:
+//   - email: The email address to check
+//
+// Returns:
+//   - *AuthorizationResponse: Response containing user data
+//   - *ErrorFields: Error details if check fails
+//
+// Example:
+//
+//	response, err := auth.CheckEmail("user@example.com")
+//	if err != nil {
+//	    // Handle check error
+//	}
+func (a *Authorization) CheckEmail(email string) (*AuthorizationResponse, *ErrorFields) {
+	username := ""
+	if !strings.Contains(email, "@") {
+		username = email
+	}
+	user, err := a.findUser(email, username)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return nil, &ErrorFields{Error: fmt.Errorf("this not found"), Field: "email"}
+		}
+		return nil, &ErrorFields{Error: err, Field: "email"}
+	}
+	return &AuthorizationResponse{
+		User: userResponse(user),
+	}, nil
+}
 
 // SignIn authenticates a user with email/username and password.
 // Validates credentials and returns tokens and user data upon successful authentication.
