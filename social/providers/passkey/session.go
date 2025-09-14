@@ -16,6 +16,7 @@ type Session struct {
 	UserName     string                `json:"user_name"`
 	UserEmail    string                `json:"user_email"`
 	CredentialID string                `json:"credential_id"`
+	AccessToken  string                `json:"access_token"`
 	SessionData  *webauthn.SessionData `json:"session_data"`
 	Options      interface{}           `json:"options"`
 }
@@ -65,9 +66,10 @@ func (s *Session) Authorize(provider social.Provider, params social.Params) (str
 	s.UserName = userName
 	s.UserEmail = userEmail
 	s.CredentialID = credentialID
+	s.AccessToken = userID // Use userID as access token for demo
 
 	// Return a token-like identifier (in real implementation, this might be a JWT or session ID)
-	return s.UserID, nil
+	return s.AccessToken, nil
 }
 
 // Marshal the session into a string

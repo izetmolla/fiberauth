@@ -36,8 +36,7 @@ func Test_Session_Authorize(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 
-	provider, err := passkeyProvider()
-	a.NoError(err)
+	provider := passkeyProvider()
 
 	session := &passkey.Session{
 		Challenge: "test_challenge",
@@ -59,14 +58,14 @@ func Test_Session_Authorize(t *testing.T) {
 	a.Equal("Test User", session.UserName)
 	a.Equal("test@example.com", session.UserEmail)
 	a.Equal("test_credential_456", session.CredentialID)
+	a.Equal("test_user_123", session.AccessToken)
 }
 
 func Test_Session_Authorize_MissingUserID(t *testing.T) {
 	t.Parallel()
 	a := assert.New(t)
 
-	provider, err := passkeyProvider()
-	a.NoError(err)
+	provider := passkeyProvider()
 
 	session := &passkey.Session{
 		Challenge: "test_challenge",
@@ -76,7 +75,7 @@ func Test_Session_Authorize_MissingUserID(t *testing.T) {
 		values: map[string]string{},
 	}
 
-	_, err = session.Authorize(provider, params)
+	_, err := session.Authorize(provider, params)
 	a.Error(err)
 	a.Contains(err.Error(), "user_id is required")
 }
@@ -91,6 +90,7 @@ func Test_Session_Marshal(t *testing.T) {
 		UserName:     "Test User",
 		UserEmail:    "test@example.com",
 		CredentialID: "test_credential",
+		AccessToken:  "test_token",
 	}
 
 	marshaled := session.Marshal()
@@ -99,6 +99,7 @@ func Test_Session_Marshal(t *testing.T) {
 	a.Contains(marshaled, "Test User")
 	a.Contains(marshaled, "test@example.com")
 	a.Contains(marshaled, "test_credential")
+	a.Contains(marshaled, "test_token")
 }
 
 func Test_Session_String(t *testing.T) {
@@ -106,13 +107,62 @@ func Test_Session_String(t *testing.T) {
 	a := assert.New(t)
 
 	session := &passkey.Session{
-		Challenge: "test_challenge",
-		UserID:    "test_user",
+		Challenge:   "test_challenge",
+		UserID:      "test_user",
+		AccessToken: "test_token",
 	}
 
 	str := session.String()
 	marshaled := session.Marshal()
 	a.Equal(marshaled, str)
+	a.Contains(marshaled, "test_challenge")
+	a.Contains(marshaled, "test_token")
+}
+
+func Test_FetchUser(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	provider := passkeyProvider()
+
+	session := &passkey.Session{
+		Challenge:    "test_challenge",
+		UserID:       "test_user_123",
+		UserName:     "Test User",
+		UserEmail:    "test@example.com",
+		CredentialID: "test_credential_456",
+		AccessToken:  "test_token",
+	}
+
+	user, err := provider.FetchUser(session)
+	a.NoError(err)
+	a.Equal("test_user_123", user.UserID)
+	a.Equal("Test User", user.Name)
+	a.Equal("test@example.com", user.Email)
+	a.Equal("passkey", user.Provider)
+	a.Equal("test_token", user.AccessToken)
+
+	// Check raw data
+	a.NotNil(user.RawData)
+	a.Equal("test_challenge", user.RawData["challenge"])
+	a.Equal("test_user_123", user.RawData["user_id"])
+	a.Equal("test_credential_456", user.RawData["credential_id"])
+}
+
+func Test_FetchUser_EmptyUserID(t *testing.T) {
+	t.Parallel()
+	a := assert.New(t)
+
+	provider := passkeyProvider()
+
+	session := &passkey.Session{
+		Challenge:   "test_challenge",
+		AccessToken: "test_token",
+	}
+
+	_, err := provider.FetchUser(session)
+	a.Error(err)
+	a.Contains(err.Error(), "cannot get user information without user ID")
 }
 
 // MockParams implements social.Params for testing
