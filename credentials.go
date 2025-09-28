@@ -25,19 +25,26 @@ import (
 //	    // Handle check error
 //	}
 func (a *Authorization) CheckEmail(email string) (*AuthorizationResponse, *ErrorFields) {
+	findBy := "email"
 	username := ""
 	if !strings.Contains(email, "@") {
+		findBy = "username"
 		username = email
 	}
 	user, err := a.findUser(email, username)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			return nil, &ErrorFields{Error: fmt.Errorf("this not found"), Field: "email"}
+			return nil, &ErrorFields{Error: fmt.Errorf("%s:%s not found", findBy, username), Field: "email"}
 		}
 		return nil, &ErrorFields{Error: err, Field: "email"}
 	}
 	return &AuthorizationResponse{
-		User: userResponse(user),
+		User: userResponse(&User{
+			FirstName: user.FirstName,
+			LastName:  user.LastName,
+			Email:     user.Email,
+			AvatarURL: user.AvatarURL,
+		}),
 	}, nil
 }
 
