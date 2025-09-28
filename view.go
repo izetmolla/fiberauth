@@ -54,8 +54,8 @@ func (a *Authorization) RenderRedirectHTML(params ...map[string]any) string {
                 window.localStorage.setItem("authorization-storage", JSON.stringify({
                     ...currentState,
                     state: {
-                        redirectUrl: "",
                         ...currentState?.state,
+                        redirectUrl: "",
                         isSignedIn: true,
                         ...authData
                     }
