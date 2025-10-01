@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/extractors"
 	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -98,9 +99,8 @@ func createStorage(cnf *SocialDataConfig) StorageInterface {
 // createSessionStore creates a session store with the given storage implementation.
 func createSessionStore(storage StorageInterface) *session.Store {
 	config := session.Config{
-		// KeyLookup:      fmt.Sprintf("cookie:%s", SessionName),
 		CookieHTTPOnly: true,
-		Extractor:      session.FromCookie(SessionName),
+		Extractor:      extractors.FromCookie(SessionName),
 	}
 
 	if storage != nil {
