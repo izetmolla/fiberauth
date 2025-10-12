@@ -37,9 +37,13 @@ func (a *Authorization) applyConfig(config *Config) {
 func (a *Authorization) setDefaults() {
 	if a.accessTokenLifetime == nil {
 		a.accessTokenLifetime = &defaultAccessTokenLifetime
+	} else {
+		defaultAccessTokenLifetime = *a.accessTokenLifetime
 	}
 	if a.refreshTokenLifetime == nil {
 		a.refreshTokenLifetime = &defaultRefreshTokenLifetime
+	} else {
+		defaultRefreshTokenLifetime = *a.refreshTokenLifetime
 	}
 	if a.signingMethodHMAC == nil {
 		a.signingMethodHMAC = &defaultSigningMethodHMAC
