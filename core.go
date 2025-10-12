@@ -350,10 +350,16 @@ func (a *Authorization) CreateSession(userID string, ip, userAgent string) (stri
 		return "", fmt.Errorf("database connection not available")
 	}
 	sessionID := ""
-	err := a.sqlStorage.Raw("INSERT INTO sessions (user_id, ip_address, user_agent) VALUES (?, ?, ?) RETURNING id", userID, ip, userAgent).Scan(&sessionID).Error
+	session := &Session{
+		UserID:    userID,
+		IPAddress: &ip,
+		UserAgent: &userAgent,
+	}
+	err := a.sqlStorage.Create(session).Error
 	if err != nil {
 		return "", err
 	}
+	sessionID = session.ID
 	return sessionID, nil
 }
 
