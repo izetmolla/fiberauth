@@ -37,6 +37,10 @@ type Config struct {
 	GitHubClientSecret *string `json:"github_client_secret" yaml:"github_client_secret"`
 	GitHubRedirectURL  *string `json:"github_redirect_url" yaml:"github_redirect_url"`
 
+	// Password configuration
+	PasswordCost      *int `json:"password_cost" yaml:"password_cost"`
+	PasswordMinLength *int `json:"password_min_length" yaml:"password_min_length"`
+
 	Providers []social.Provider
 }
 

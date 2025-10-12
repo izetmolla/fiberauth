@@ -114,6 +114,9 @@ type Authorization struct {
 	mainDomainName    string
 	authRedirectURL   string
 
+	passwordCost      *int
+	passwordMinLength *int
+
 	social    *social.SocialData
 	providers map[string]social.Provider
 }

@@ -32,4 +32,10 @@ var (
 
 	// defaultAuthRedirectURL is the default redirect URL for the auth server
 	defaultAuthRedirectURL = ""
+
+	// defaultPasswordCost is the default cost for password hashing
+	defaultPasswordCost = 12
+
+	// defaultPasswordMinLength is the default minimum length for password
+	defaultPasswordMinLength = 3
 )

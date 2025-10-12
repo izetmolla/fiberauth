@@ -154,7 +154,10 @@ func (a *Authorization) SignUp(request *SignUpRequest) (*AuthorizationResponse, 
 
 // createNewUser creates a new user and returns the authorization response
 func (a *Authorization) createNewUser(request *SignUpRequest) (*AuthorizationResponse, *ErrorFields) {
-	password := a.CreatePassword(request.Password)
+	password, err := a.CreatePassword(request.Password)
+	if err != nil {
+		return nil, &ErrorFields{Error: err}
+	}
 	user := &User{
 		FirstName: request.FirstName,
 		LastName:  request.LastName,

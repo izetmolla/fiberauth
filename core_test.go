@@ -73,7 +73,8 @@ func TestAuthorization_CreatePassword(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			hash := auth.CreatePassword(tt.password)
+			hash, err := auth.CreatePassword(tt.password)
+			assert.NoError(t, err)
 
 			// Verify the hash is not empty
 			assert.NotEmpty(t, hash)
@@ -83,7 +84,7 @@ func TestAuthorization_CreatePassword(t *testing.T) {
 
 			// Verify the password can be validated against the hash
 			if tt.password != "" {
-				assert.True(t, auth.IsValidPassword(hash, tt.password))
+				assert.True(t, auth.IsValidPassword(hash, tt.password), err)
 			}
 		})
 	}

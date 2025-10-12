@@ -239,6 +239,162 @@ curl -X POST http://localhost:3000/auth/signin \
 }
 ```
 
+## 🔄 Token Refresh
+
+### Refresh Token Controller
+
+The `HandleRefreshTokenController` provides a way to refresh access tokens without requiring a session. This is particularly useful for API-only applications or stateless authentication flows.
+
+#### How it works:
+
+1. **Token Extraction**: Extracts the refresh token from the `Authorization` header
+2. **Token Validation**: Validates the refresh token and extracts session information
+3. **Session Verification**: Verifies the session exists in the database/Redis
+4. **New Token Generation**: Generates a new access token with updated expiration
+5. **Response**: Returns the new access token as a JSON string
+
+#### Usage:
+
+```go
+// Add refresh token middleware to API routes
+api.Use(auth.HandleRefreshTokenController)
+
+// Or use it as a standalone endpoint
+app.Post("/auth/refresh", auth.HandleRefreshTokenController)
+```
+
+#### Request Format:
+
+The refresh token should be sent in the `Authorization` header:
+
+```bash
+# Using Bearer token format
+Authorization: Bearer <refresh_token>
+
+# Using Token format  
+Authorization: Token <refresh_token>
+
+# Or just the token itself
+Authorization: <refresh_token>
+```
+
+#### Response Format:
+
+**Success Response** (200 OK):
+```json
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMTIzIiwic2Vzc2lvbl9pZCI6InNlc3Npb24tNDU2IiwiZXhwIjoxNzM0NTY3ODkwfQ.example_signature"
+```
+
+**Error Response** (401 Unauthorized):
+```json
+{
+  "error": true,
+  "message": "Invalid or expired refresh token"
+}
+```
+
+#### Example Implementation:
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/gofiber/fiber/v3"
+    "github.com/izetmolla/fiberauth"
+)
+
+func main() {
+    app := fiber.New()
+    
+    // Initialize auth service
+    config := &fiberauth.Config{
+        JWTSecret: "your-super-secret-jwt-key",
+        Debug:     true,
+    }
+    
+    auth, err := fiberauth.New(config)
+    if err != nil {
+        log.Fatal("Failed to initialize authorization:", err)
+    }
+    
+    // API routes group
+    api := app.Group("/api")
+    
+    // Add refresh token middleware to all API routes
+    api.Use(auth.HandleRefreshTokenController)
+    
+    // Protected API endpoints
+    api.Get("/profile", func(c fiber.Ctx) error {
+        return c.JSON(fiber.Map{
+            "message": "Profile data",
+            "user_id": c.Locals("user_id"),
+        })
+    })
+    
+    api.Get("/dashboard", func(c fiber.Ctx) error {
+        return c.JSON(fiber.Map{
+            "message": "Dashboard data",
+        })
+    })
+    
+    // Standalone refresh endpoint
+    app.Post("/auth/refresh", auth.HandleRefreshTokenController)
+    
+    log.Fatal(app.Listen(":3000"))
+}
+```
+
+#### Client-side Usage Example:
+
+```javascript
+// JavaScript example
+async function refreshToken() {
+    try {
+        const response = await fetch('/auth/refresh', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('refreshToken')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const newAccessToken = await response.text();
+            localStorage.setItem('accessToken', newAccessToken);
+            console.log('Token refreshed successfully');
+        } else {
+            console.error('Token refresh failed');
+            // Redirect to login
+        }
+    } catch (error) {
+        console.error('Error refreshing token:', error);
+    }
+}
+
+// cURL example
+curl -X POST http://localhost:3000/auth/refresh \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json"
+```
+
+#### Configuration Options:
+
+The refresh token controller uses the `RefreshTokenHandlerIdentifier` header to determine if it should process the request. Set this header to `"yes"` to enable refresh token processing:
+
+```go
+// Enable refresh token processing
+c.Set("cft", "yes")
+```
+
+#### Security Considerations:
+
+- Refresh tokens should have longer expiration times than access tokens
+- Store refresh tokens securely on the client side
+- Implement token rotation for enhanced security
+- Use HTTPS in production to prevent token interception
+- Consider implementing refresh token blacklisting for logout scenarios
+
 ## 🔧 Configuration
 
 ### Environment Variables

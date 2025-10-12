@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
@@ -63,6 +64,16 @@ func (a *Authorization) setDefaults() {
 	} else {
 		a.authRedirectURL = os.Getenv("AUTH_REDIRECT_URL")
 	}
+	if a.passwordCost == nil {
+		a.passwordCost = &defaultPasswordCost
+	} else {
+		defaultPasswordCost = *a.passwordCost
+	}
+	if a.passwordMinLength == nil {
+		a.passwordMinLength = &defaultPasswordMinLength
+	} else {
+		defaultPasswordMinLength = *a.passwordMinLength
+	}
 }
 
 // =============================================================================
@@ -89,25 +100,6 @@ func (a *Authorization) IsValidPassword(encpw, pw string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(encpw), []byte(pw)) == nil
 }
 
-// CreatePassword generates a bcrypt hash from a plain text password.
-// Uses a cost factor of 12 for security.
-//
-// Parameters:
-//   - password: The plain text password to hash
-//
-// Returns:
-//   - string: The bcrypt hash of the password
-//
-// Example:
-//
-//	hashedPassword := auth.CreatePassword("userPassword123")
-//	// Store hashedPassword in database
-func (a *Authorization) CreatePassword(password string) string {
-	cost := 12
-	encpw, _ := bcrypt.GenerateFromPassword([]byte(password), cost)
-	return string(encpw)
-}
-
 // CreatePasswordWithError generates a bcrypt hash from a plain text password.
 // Uses a cost factor of 12 for security and returns an error if hashing fails.
 //
@@ -126,8 +118,8 @@ func (a *Authorization) CreatePassword(password string) string {
 //	}
 //	// Store hashedPassword in database
 
-func CreatePassword(password string) (string, error) {
-	cost := 12
+func (a *Authorization) CreatePassword(password string) (string, error) {
+	cost := *a.passwordCost
 	encpw, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	if err != nil {
 		return "", err
@@ -135,44 +127,12 @@ func CreatePassword(password string) (string, error) {
 	return string(encpw), nil
 }
 
-// DefaultUser creates a default user with hashed password and roles.
-// This utility function is useful for seeding initial users.
-//
-// Parameters:
-//   - email: The email address of the user
-//   - password: The plain text password of the user
-//   - fname: The first name of the user
-//   - lname: The last name of the user
-//   - roles: The roles assigned to the user (default is ["user"] if nil)
-//
-// Returns:
-//   - User: The created user struct
-//   - error: Error if password hashing fails
-//
-// Example:
-//
-//	user, err := DefaultUser("admin@admin.com", "securePass123", "Admin", "User", []string{"admin"})
-//	if err != nil {
-//	    // Handle error
-//	}
-func DefaultUser(email, password, fname, lname string, roles any) (User, error) {
-	passwordHash, err := CreatePassword(password)
+func CreatePassword(password string) (string, error) {
+	encpw, err := bcrypt.GenerateFromPassword([]byte(password), defaultPasswordCost)
 	if err != nil {
-		return User{}, err
+		return "", err
 	}
-
-	if roles == nil {
-		roles = json.RawMessage(`["user"]`)
-	}
-	return User{
-		ID:        uuid.New().String(),
-		FirstName: fname,
-		LastName:  lname,
-		Email:     email,
-		Password:  &passwordHash,
-		Roles:     roles.(json.RawMessage),
-		Metadata:  json.RawMessage(`{}`),
-	}, nil
+	return string(encpw), nil
 }
 
 // =============================================================================
@@ -418,13 +378,20 @@ func (a *Authorization) CreateSession(userID string, ip, userAgent string) (stri
 		return "", fmt.Errorf("database connection not available")
 	}
 	sessionID := ""
+	refreshTokenLifetime, err := ParseCustomDuration(*a.refreshTokenLifetime, "1y")
+	if err != nil {
+		return "", fmt.Errorf("failed to parse access token lifetime: %w", err)
+	}
+
+	expiresAt := time.Now().Add(refreshTokenLifetime)
 	session := &Session{
 		ID:        uuid.New().String(),
 		UserID:    userID,
 		IPAddress: &ip,
 		UserAgent: &userAgent,
+		ExpiresAt: &expiresAt,
 	}
-	err := a.sqlStorage.Create(session).Error
+	err = a.sqlStorage.Create(session).Error
 	if err != nil {
 		return "", err
 	}

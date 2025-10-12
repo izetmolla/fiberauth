@@ -255,8 +255,11 @@ func deserializeSessionData(data []byte) (*SessionData, error) {
 //   - error: Error if session not found or database error occurs
 func (a *Authorization) getSessionFromDatabase(sessionID string) (*SessionData, error) {
 	var sessionData *SessionData
+	// Use Go's time.Now() for cross-driver compatibility
+	// This approach works with MySQL, PostgreSQL, SQLite, and SQL Server
 	// Execute raw SQL query to get session and user data
-	if err := a.sqlStorage.Raw("SELECT s.id, s.user_id, u.roles, u.metadata FROM sessions s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ? AND s.expires_at > NOW() AND s.deleted_at IS NULL", sessionID).Scan(&sessionData).Error; err != nil {
+	// Using parameterized query with current time for better cross-driver compatibility
+	if err := a.sqlStorage.Raw("SELECT s.id, s.user_id, u.roles, u.metadata FROM sessions s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ? AND s.expires_at > ? AND s.deleted_at IS NULL", sessionID, a.sqlStorage.NowFunc()).Scan(&sessionData).Error; err != nil {
 		return nil, err
 	}
 
