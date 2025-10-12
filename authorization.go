@@ -150,10 +150,32 @@ func New(config *Config) (*Authorization, error) {
 		return nil, fmt.Errorf("JWT_SECRET secret cannot be empty")
 	}
 	auth := &Authorization{
-		jwtSecret:    config.JWTSecret,
-		redisStorage: config.RedisClient,
-		sqlStorage:   config.DbClient,
-		Debug:        config.Debug,
+		jwtSecret:            config.JWTSecret,
+		redisStorage:         config.RedisClient,
+		sqlStorage:           config.DbClient,
+		Debug:                config.Debug,
+		refreshTokenLifetime: config.RefreshTokenLifetime,
+		accessTokenLifetime:  config.AccessTokenLifetime,
+		passwordCost:         config.PasswordCost,
+		passwordMinLength:    config.PasswordMinLength,
+		signingMethodHMAC:    config.SigningMethodHMAC,
+		redisPrefix:          config.RedisKeyPrefix,
+	}
+
+	if config.RedisTTL != nil {
+		auth.redisTTL = *config.RedisTTL
+	}
+	if config.RedisTTL != nil {
+		auth.redisTTL = *config.RedisTTL
+	}
+	if config.CookieSessionName != nil {
+		auth.cookieSessionName = *config.CookieSessionName
+	}
+	if config.MainDomainName != nil {
+		auth.mainDomainName = *config.MainDomainName
+	}
+	if config.AuthRedirectURL != nil {
+		auth.authRedirectURL = *config.AuthRedirectURL
 	}
 
 	if config.Providers != nil {

@@ -41,6 +41,11 @@ type Config struct {
 	PasswordCost      *int `json:"password_cost" yaml:"password_cost"`
 	PasswordMinLength *int `json:"password_min_length" yaml:"password_min_length"`
 
+	// Cookie configuration
+	CookieSessionName *string `json:"cookie_session_name" yaml:"cookie_session_name"`
+	MainDomainName    *string `json:"main_domain_name" yaml:"main_domain_name"`
+	AuthRedirectURL   *string `json:"auth_redirect_url" yaml:"auth_redirect_url"`
+
 	Providers []social.Provider
 }
 
