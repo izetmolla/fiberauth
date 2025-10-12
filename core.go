@@ -11,6 +11,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/izetmolla/fiberauth/social"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -105,6 +106,73 @@ func (a *Authorization) CreatePassword(password string) string {
 	cost := 12
 	encpw, _ := bcrypt.GenerateFromPassword([]byte(password), cost)
 	return string(encpw)
+}
+
+// CreatePasswordWithError generates a bcrypt hash from a plain text password.
+// Uses a cost factor of 12 for security and returns an error if hashing fails.
+//
+// Parameters:
+//   - password: The plain text password to hash
+//
+// Returns:
+//   - string: The bcrypt hash of the password
+//   - error: Error if hashing fails
+//
+// Example:
+//
+//	hashedPassword, err := auth.CreatePasswordWithError("userPassword123")
+//	if err != nil {
+//	    // Handle error
+//	}
+//	// Store hashedPassword in database
+
+func CreatePassword(password string) (string, error) {
+	cost := 12
+	encpw, err := bcrypt.GenerateFromPassword([]byte(password), cost)
+	if err != nil {
+		return "", err
+	}
+	return string(encpw), nil
+}
+
+// DefaultUser creates a default user with hashed password and roles.
+// This utility function is useful for seeding initial users.
+//
+// Parameters:
+//   - email: The email address of the user
+//   - password: The plain text password of the user
+//   - fname: The first name of the user
+//   - lname: The last name of the user
+//   - roles: The roles assigned to the user (default is ["user"] if nil)
+//
+// Returns:
+//   - User: The created user struct
+//   - error: Error if password hashing fails
+//
+// Example:
+//
+//	user, err := DefaultUser("admin@admin.com", "securePass123", "Admin", "User", []string{"admin"})
+//	if err != nil {
+//	    // Handle error
+//	}
+func DefaultUser(email, password, fname, lname string, roles any) (User, error) {
+	passwordHash, err := CreatePassword(password)
+	if err != nil {
+		return User{}, err
+	}
+
+	if roles == nil {
+		roles = json.RawMessage(`["user"]`)
+	}
+	return User{
+		ID:        uuid.New().String(),
+		FirstName: fname,
+		LastName:  lname,
+		Email:     email,
+		Password:  &passwordHash,
+		Roles:     roles.(json.RawMessage),
+		Metadata:  json.RawMessage(`{}`),
+	}, nil
 }
 
 // =============================================================================
@@ -351,6 +419,7 @@ func (a *Authorization) CreateSession(userID string, ip, userAgent string) (stri
 	}
 	sessionID := ""
 	session := &Session{
+		ID:        uuid.New().String(),
 		UserID:    userID,
 		IPAddress: &ip,
 		UserAgent: &userAgent,
