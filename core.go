@@ -524,6 +524,29 @@ func (a *Authorization) isExcludedPath(excluded []string, path string) bool {
 	return false
 }
 
+func (a *Authorization) getRealIPAddress(c fiber.Ctx) string {
+	// Check for Cloudflare's CF-Connecting-IP header first
+	if cfIP := c.Get("CF-Connecting-IP"); cfIP != "" {
+		return cfIP
+	}
+
+	// Check for other common real IP headers
+	if realIP := c.Get("X-Real-IP"); realIP != "" {
+		return realIP
+	}
+
+	if forwardedFor := c.Get("X-Forwarded-For"); forwardedFor != "" {
+		// X-Forwarded-For can contain multiple IPs, take the first one
+		ips := strings.Split(forwardedFor, ",")
+		if len(ips) > 0 {
+			return strings.TrimSpace(ips[0])
+		}
+	}
+
+	// Fallback to the direct connection IP
+	return c.IP()
+}
+
 func userResponse(user *User) map[string]any {
 	return map[string]any{
 		"id":         user.ID,

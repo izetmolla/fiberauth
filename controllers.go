@@ -105,6 +105,12 @@ func (a *Authorization) SignInController(c fiber.Ctx) error {
 	if err := a.bindAndValidateRequest(c, request); err != nil {
 		return a.handleErrorResponse(c, err, fiber.StatusBadRequest)
 	}
+	if request.IpAddress == "" {
+		request.IpAddress = a.getRealIPAddress(c)
+	}
+	if request.UserAgent == "" {
+		request.UserAgent = c.Get("User-Agent")
+	}
 
 	res, err := a.SignIn(request)
 	if err == nil {

@@ -94,7 +94,7 @@ func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, 
 		return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
 	}
 
-	tokens, sessionID, err := a.authorize(user, "", "")
+	tokens, sessionID, err := a.authorize(user, request.IpAddress, request.UserAgent)
 	if err != nil {
 		return nil, &ErrorFields{Error: err}
 	}
@@ -173,7 +173,7 @@ func (a *Authorization) createNewUser(request *SignUpRequest) (*AuthorizationRes
 		return nil, &ErrorFields{Error: err}
 	}
 
-	tokens, sessionID, err := a.authorize(user, "", "")
+	tokens, sessionID, err := a.authorize(user, request.IpAddress, request.UserAgent)
 	if err != nil {
 		return nil, &ErrorFields{Error: err}
 	}
