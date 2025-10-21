@@ -85,7 +85,7 @@ func (a *Authorization) handleWebEndpoint(c fiber.Ctx, config *AuthConfig) error
 	session, err := a.GetSession(sessionID)
 
 	if err != nil {
-		return a.respondWithError(c, fiber.StatusUnauthorized, "User not authenticated")
+		return a.handleUnauthenticatedUser(c, config)
 	}
 
 	// Check if this is an API endpoint within web context
@@ -120,6 +120,9 @@ func (a *Authorization) handleUnauthenticatedUser(c fiber.Ctx, config *AuthConfi
 		}
 		if config.Debug {
 			fmt.Printf("handleUnauthenticatedUser(): redirecting from %s to %s\n", currentPath, redirectURL)
+		}
+		if config.OnlyAPI {
+			return a.respondWithError(c, fiber.StatusUnauthorized, "User not authenticated")
 		}
 		return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(redirectURL)
 	}
@@ -199,7 +202,6 @@ func (a *Authorization) AllowOnly(roles []string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		// Extract user from context (set by JWT middleware)
 		user, ok := c.Locals("user").(*jwt.Token)
-		fmt.Printf("AllowOnly(): user: %v, ok: %v\n", user, ok)
 		if !ok {
 			return a.respondWithError(c, fiber.StatusUnauthorized, "User not authenticated")
 		}
