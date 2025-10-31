@@ -67,7 +67,7 @@ func (a *Authorization) CheckEmail(email string) (*AuthorizationResponse, *Error
 //	if err != nil {
 //	    // Handle authentication error
 //	}
-func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, *ErrorFields) {
+func (a *Authorization) SignIn(request *SignInRequest, noPassword ...bool) (*AuthorizationResponse, *ErrorFields) {
 	// Validate request
 	validator := NewValidator()
 	if err := validator.ValidateSignInRequest(request); err != nil {
@@ -86,12 +86,14 @@ func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, 
 		return nil, &ErrorFields{Error: err}
 	}
 
-	if user.Password == nil {
-		return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
-	}
+	if len(noPassword) == 0 {
+		if user.Password == nil {
+			return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
+		}
 
-	if !a.IsValidPassword(*user.Password, request.Password) {
-		return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
+		if !a.IsValidPassword(*user.Password, request.Password) {
+			return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
+		}
 	}
 
 	tokens, sessionID, err := a.authorize(user, request.IpAddress, request.UserAgent)
