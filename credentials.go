@@ -86,7 +86,7 @@ func (a *Authorization) SignIn(request *SignInRequest, noPassword ...bool) (*Aut
 		return nil, &ErrorFields{Error: err}
 	}
 
-	if len(noPassword) == 0 {
+	if len(noPassword) == 0 || !noPassword[0] {
 		if user.Password == nil {
 			return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
 		}

@@ -33,10 +33,11 @@ type RefreshTokenClaims struct {
 
 // JWTOptions holds options for generating JWTs.
 type JWTOptions struct {
-	SessionID string          `json:"session_id"` // Optional session ID to include in the token
-	UserID    string          `json:"user_id"`    // User ID to include in the token
-	Metadata  json.RawMessage `json:"metadata"`   // Optional metadata to include in the token
-	Roles     json.RawMessage `json:"roles"`      // Optional roles to include in the token
+	SessionID         string          `json:"session_id"` // Optional session ID to include in the token
+	UserID            string          `json:"user_id"`    // User ID to include in the token
+	Metadata          json.RawMessage `json:"metadata"`   // Optional metadata to include in the token
+	Roles             json.RawMessage `json:"roles"`      // Optional roles to include in the token
+	AuthorizationType string          `json:"authorization_type"`
 }
 
 // GenerateJWT generates a JWT and a refresh token for the given user and options.

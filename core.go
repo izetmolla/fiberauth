@@ -276,19 +276,23 @@ func (a *Authorization) findUser(email string, username string) (*User, error) {
 //   - *Tokens: The generated access and refresh tokens
 //   - string: The session ID
 //   - error: Error if authorization fails
-func (a *Authorization) authorize(user *User, ip, userAgent string) (*Tokens, string, error) {
+func (a *Authorization) authorize(user *User, ip, userAgent string, authorizationType ...string) (*Tokens, string, error) {
+	if len(authorizationType) == 0 {
+		authorizationType = []string{"credentials"}
+	}
 	// Create session
-	sessionID, err := a.CreateSession(user.ID, ip, userAgent)
+	sessionID, err := a.CreateSession(user.ID, ip, userAgent, authorizationType[0])
 	if err != nil {
 		return nil, "", err
 	}
 
 	// Generate tokens
 	accessToken, refreshToken, err := a.GenerateJWT(&JWTOptions{
-		SessionID: sessionID,
-		UserID:    user.ID,
-		Metadata:  user.Metadata,
-		Roles:     user.Roles,
+		SessionID:         sessionID,
+		UserID:            user.ID,
+		Metadata:          user.Metadata,
+		Roles:             user.Roles,
+		AuthorizationType: authorizationType[0], // credentials, social, etc.
 	})
 	if err != nil {
 		return nil, "", err
@@ -377,9 +381,12 @@ func (a *Authorization) createUser(email string, socialUser *social.User) (*User
 //	if err != nil {
 //	    // Handle error
 //	}
-func (a *Authorization) CreateSession(userID string, ip, userAgent string) (string, error) {
+func (a *Authorization) CreateSession(userID string, ip, userAgent string, authorizationType ...string) (string, error) {
 	if a.sqlStorage == nil {
 		return "", fmt.Errorf("database connection not available")
+	}
+	if len(authorizationType) == 0 {
+		authorizationType = []string{"credentials"}
 	}
 	sessionID := ""
 	refreshTokenLifetime, err := ParseCustomDuration(*a.refreshTokenLifetime, "1y")
@@ -389,11 +396,12 @@ func (a *Authorization) CreateSession(userID string, ip, userAgent string) (stri
 
 	expiresAt := time.Now().Add(refreshTokenLifetime)
 	session := &Session{
-		ID:        uuid.New().String(),
-		UserID:    userID,
-		IPAddress: &ip,
-		UserAgent: &userAgent,
-		ExpiresAt: &expiresAt,
+		ID:                uuid.New().String(),
+		UserID:            userID,
+		IPAddress:         &ip,
+		AuthorizationType: authorizationType[0], // credentials, social, etc.
+		UserAgent:         &userAgent,
+		ExpiresAt:         &expiresAt,
 	}
 	err = a.sqlStorage.Create(session).Error
 	if err != nil {
