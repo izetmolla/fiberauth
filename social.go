@@ -126,7 +126,7 @@ func (a *Authorization) ProviderCallBack(c fiber.Ctx, providerName string) (*Aut
 		return nil, err
 	}
 
-	tokens, sessionID, err := a.authorize(foundUser, c.IP(), c.Get("User-Agent"))
+	tokens, sessionID, err := a.authorize(foundUser, c.IP(), c.Get("User-Agent"), providerName)
 	if err != nil {
 		return nil, err
 	}
