@@ -96,7 +96,7 @@ func (a *Authorization) SignIn(request *SignInRequest, noPassword ...bool) (*Aut
 		}
 	}
 
-	tokens, sessionID, err := a.authorize(user, request.IpAddress, request.UserAgent)
+	tokens, sessionID, err := a.authorize(user, request.IpAddress, request.UserAgent, request.Method)
 	if err != nil {
 		return nil, &ErrorFields{Error: err}
 	}
@@ -175,7 +175,7 @@ func (a *Authorization) createNewUser(request *SignUpRequest) (*AuthorizationRes
 		return nil, &ErrorFields{Error: err}
 	}
 
-	tokens, sessionID, err := a.authorize(user, request.IpAddress, request.UserAgent)
+	tokens, sessionID, err := a.authorize(user, request.IpAddress, request.UserAgent, request.Method)
 	if err != nil {
 		return nil, &ErrorFields{Error: err}
 	}

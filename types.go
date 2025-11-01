@@ -92,6 +92,7 @@ type SignUpRequest struct {
 	Password  string `json:"password"`
 	IpAddress string `json:"ip_address"`
 	UserAgent string `json:"user_agent"`
+	Method    string `json:"method"`
 }
 
 // AuthorizationResponse represents the response after successful authentication.
