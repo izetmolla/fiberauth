@@ -16,7 +16,7 @@ type Session struct {
 	UserAgent *string    `json:"user_agent" gorm:"type:text;default:null"`                  // User agent string
 	ExpiresAt *time.Time `json:"expires_at" gorm:"default:null"`                            // Expiration time for the session, defaults to 1 year from now
 
-	AuthorizationType string `json:"authorization_type" gorm:"type:string;default:'credentials'"` // Authorization type (credentials, social, etc.)
+	Method string `json:"method" gorm:"type:string;default:'credentials'"` // Authorization type (credentials, social, etc.)
 
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`

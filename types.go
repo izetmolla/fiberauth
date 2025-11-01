@@ -74,13 +74,13 @@ type Tokens struct {
 
 // SignInRequest represents a user sign-in request.
 type SignInRequest struct {
-	Email             string `json:"email"`
-	Username          string `json:"username"`
-	Remember          bool   `json:"remember"`
-	Password          string `json:"password"`
-	IpAddress         string `json:"ip_address"`
-	UserAgent         string `json:"user_agent"`
-	AuthorizationType string `json:"authorization_type"`
+	Email     string `json:"email"`
+	Username  string `json:"username"`
+	Remember  bool   `json:"remember"`
+	Password  string `json:"password"`
+	IpAddress string `json:"ip_address"`
+	UserAgent string `json:"user_agent"`
+	Method    string `json:"method"`
 }
 
 // SignUpRequest represents a user registration request.
