@@ -78,6 +78,7 @@ func (a *Authorization) setDefaults() {
 	} else {
 		defaultPasswordMinLength = *a.passwordMinLength
 	}
+
 }
 
 // =============================================================================

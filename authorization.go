@@ -149,6 +149,14 @@ func New(config *Config) (*Authorization, error) {
 	if config.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET secret cannot be empty")
 	}
+	if config.DbClient != nil {
+		// Check if sessions table exists, if not migrate it
+		if !config.DbClient.Migrator().HasTable(&Session{}) {
+			if err := config.DbClient.AutoMigrate(&Session{}); err != nil {
+				return nil, fmt.Errorf("failed to migrate sessions table: %w", err)
+			}
+		}
+	}
 	auth := &Authorization{
 		jwtSecret:            config.JWTSecret,
 		redisStorage:         config.RedisClient,
