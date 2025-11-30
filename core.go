@@ -563,6 +563,7 @@ func userResponse(user *User) map[string]any {
 		"last_name":  user.LastName,
 		"avatar_url": user.AvatarURL,
 		"email":      user.Email,
+		"username":   user.Username,
 		"roles":      user.Roles,
 		"metadata":   user.Metadata,
 	}
