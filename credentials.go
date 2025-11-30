@@ -1,6 +1,7 @@
 package fiberauth
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -165,6 +166,9 @@ func (a *Authorization) createNewUser(request *SignUpRequest) (*AuthorizationRes
 		LastName:  request.LastName,
 		Email:     request.Email,
 		Password:  &password,
+		Options:   json.RawMessage(`{}`),
+		Roles:     json.RawMessage(`[]`),
+		Metadata:  json.RawMessage(`{}`),
 	}
 
 	if request.Username != "" {

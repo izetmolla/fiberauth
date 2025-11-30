@@ -32,6 +32,7 @@ type User struct {
 	Email     string          `json:"email"`
 	Roles     json.RawMessage `json:"roles" gorm:"type:jsonb;default:'[]';not null"`
 	Metadata  json.RawMessage `json:"metadata" gorm:"type:jsonb;default:'{}';not null"`
+	Options   json.RawMessage `json:"options" gorm:"type:jsonb;default:'{}';not null"`
 	Password  *string         `json:"password"`
 
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`

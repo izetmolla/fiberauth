@@ -64,6 +64,7 @@ type SessionData struct {
 	UserID   string          `json:"user_id"`
 	Roles    json.RawMessage `json:"roles"`
 	Metadata json.RawMessage `json:"metadata"`
+	Options  json.RawMessage `json:"options"`
 }
 
 // Tokens represents the access and refresh tokens for a user session.

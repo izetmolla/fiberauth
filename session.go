@@ -77,6 +77,7 @@ func (sm *SessionManager) CreateAndStoreSession(user *User, sessionID string) er
 		UserID:   user.ID,
 		Roles:    sm.ensureJSONField(user.Roles, "[]"),
 		Metadata: sm.ensureJSONField(user.Metadata, "{}"),
+		Options:  sm.ensureJSONField(user.Options, "{}"),
 	}
 
 	sm.auth.setRedisSession(sessionData)
