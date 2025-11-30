@@ -259,7 +259,7 @@ func (a *Authorization) getSessionFromDatabase(sessionID string) (*SessionData, 
 	// This approach works with MySQL, PostgreSQL, SQLite, and SQL Server
 	// Execute raw SQL query to get session and user data
 	// Using parameterized query with current time for better cross-driver compatibility
-	if err := a.sqlStorage.Raw("SELECT s.id, s.user_id, u.roles, u.metadata, method FROM sessions s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ? AND s.expires_at > ? AND s.deleted_at IS NULL", sessionID, a.sqlStorage.NowFunc()).Scan(&sessionData).Error; err != nil {
+	if err := a.sqlStorage.Raw("SELECT s.id, s.user_id, u.roles, u.metadata,u.options, method FROM sessions s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ? AND s.expires_at > ? AND s.deleted_at IS NULL", sessionID, a.sqlStorage.NowFunc()).Scan(&sessionData).Error; err != nil {
 		return nil, err
 	}
 
