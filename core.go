@@ -58,7 +58,7 @@ func (a *Authorization) setDefaults() {
 	if a.cookieSessionName == "" || os.Getenv("COOKIE_SESSION_NAME") == "" {
 		a.cookieSessionName = defaultCookieSessionName
 	}
-	
+
 	// Set main domain name: prioritize environment variable over config, fallback to default
 	// Environment variable takes precedence if set
 	if envDomain := os.Getenv("AUTH_DOMAIN"); envDomain != "" {
@@ -280,11 +280,17 @@ func (a *Authorization) findUser(email string, username string) (*User, error) {
 	query := a.sqlStorage.Model(&User{})
 
 	if email != "" {
-		query = query.Where("email = ? AND deleted_at IS NULL", email)
-	} else if username != "" {
-		query = query.Where("username = ? AND deleted_at IS NULL", username)
+		if !strings.Contains(email, "@") {
+			query = query.Where("username = ? AND deleted_at IS NULL", email)
+		} else {
+			query = query.Where("email = ? AND deleted_at IS NULL", email)
+		}
 	} else {
-		return nil, errors.New("email or username is required")
+		if username != "" {
+			query = query.Where("username = ? AND deleted_at IS NULL", username)
+		} else {
+			return nil, errors.New("email or username is required")
+		}
 	}
 
 	err := query.First(&user).Error
