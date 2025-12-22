@@ -119,6 +119,18 @@ type Authorization struct {
 
 	social    *social.SocialData
 	providers map[string]social.Provider
+
+	// Models
+	UsersModelTable   string
+	SessionModelTable string
+
+	SignInPath           string
+	SignUpPath           string
+	SignOutPath          string
+	RefreshTokenPath     string
+	ProviderLoginPath    string
+	ProviderCallbackPath string
+	ProviderLogoutPath   string
 }
 
 // New creates and initializes a new Authorization instance with the provided configuration.
@@ -162,9 +174,7 @@ func New(config *Config) (*Authorization, error) {
 		redisPrefix:          config.RedisKeyPrefix,
 	}
 
-	if config.RedisTTL != nil {
-		auth.redisTTL = *config.RedisTTL
-	}
+	// Set Redis TTL from config if provided
 	if config.RedisTTL != nil {
 		auth.redisTTL = *config.RedisTTL
 	}
@@ -183,9 +193,65 @@ func New(config *Config) (*Authorization, error) {
 		auth.providers = social.GetProviders()
 	}
 
+	// Initialize table names from config or use defaults
+	if config.UsersModelTable != "" {
+		auth.UsersModelTable = config.UsersModelTable
+	} else {
+		auth.UsersModelTable = "users"
+	}
+	if config.SessionModelTable != "" {
+		auth.SessionModelTable = config.SessionModelTable
+	} else {
+		auth.SessionModelTable = "sessions"
+	}
+
+	// Initialize path names from config or use defaults
+	if config.SignInPath != "" {
+		auth.SignInPath = config.SignInPath
+	} else {
+		auth.SignInPath = defaultSignInPath
+	}
+	if config.SignUpPath != "" {
+		auth.SignUpPath = config.SignUpPath
+	} else {
+		auth.SignUpPath = defaultSignUpPath
+	}
+	if config.SignOutPath != "" {
+		auth.SignOutPath = config.SignOutPath
+	} else {
+		auth.SignOutPath = defaultSignOutPath
+	}
+	if config.RefreshTokenPath != "" {
+		auth.RefreshTokenPath = config.RefreshTokenPath
+	} else {
+		auth.RefreshTokenPath = defaultRefreshTokenPath
+	}
+	if config.ProviderLoginPath != "" {
+		auth.ProviderLoginPath = config.ProviderLoginPath
+	} else {
+		auth.ProviderLoginPath = defaultProviderLoginPath
+	}
+	if config.ProviderCallbackPath != "" {
+		auth.ProviderCallbackPath = config.ProviderCallbackPath
+	} else {
+		auth.ProviderCallbackPath = defaultProviderCallbackPath
+	}
+	if config.ProviderLogoutPath != "" {
+		auth.ProviderLogoutPath = config.ProviderLogoutPath
+	} else {
+		auth.ProviderLogoutPath = defaultProviderLogoutPath
+	}
+
 	// Set default values for optional fields
 	auth.setDefaults()
 	auth.social = social.New(&social.SocialDataConfig{RedisStorage: auth.redisStorage, SQLStorage: auth.sqlStorage, Debug: auth.Debug})
+
+	// Run auto-migration if database client is provided
+	if auth.sqlStorage != nil {
+		if err := auth.AutoMigrate(); err != nil {
+			return nil, fmt.Errorf("failed to run auto-migration: %w", err)
+		}
+	}
 
 	return auth, nil
 }
@@ -195,6 +261,61 @@ func (a *Authorization) GetJWTSecret() string {
 	return a.jwtSecret
 }
 
+// GetCookieSessionName returns the name of the cookie session.
+// This is used to identify the session cookie in HTTP requests.
+//
+// Returns:
+//   - string: The cookie session name
 func (a *Authorization) GetCookieSessionName() string {
 	return a.cookieSessionName
+}
+
+// AutoMigrate checks if tables exist and creates them if they don't.
+// Uses the table names specified in UsersModelTable and SessionModelTable.
+// If table names are not set, defaults to "users" and "sessions".
+//
+// Returns:
+//   - error: Error if migration fails
+//
+// Example:
+//
+//	err := auth.AutoMigrate()
+//	if err != nil {
+//	    // Handle migration error
+//	}
+func (a *Authorization) AutoMigrate() error {
+	if a.sqlStorage == nil {
+		return fmt.Errorf("database client is not initialized")
+	}
+
+	// Determine table names to use
+	usersTableName := a.UsersModelTable
+	if usersTableName == "" {
+		usersTableName = "users"
+	}
+
+	sessionTableName := a.SessionModelTable
+	if sessionTableName == "" {
+		sessionTableName = "sessions"
+	}
+
+	// Check if users table exists by table name
+	userTableExists := a.sqlStorage.Migrator().HasTable(usersTableName)
+	if !userTableExists {
+		// Create users table with custom table name
+		if err := a.sqlStorage.Table(usersTableName).AutoMigrate(&User{}); err != nil {
+			return fmt.Errorf("failed to create users table '%s': %w", usersTableName, err)
+		}
+	}
+
+	// Check if sessions table exists by table name
+	sessionTableExists := a.sqlStorage.Migrator().HasTable(sessionTableName)
+	if !sessionTableExists {
+		// Create sessions table with custom table name
+		if err := a.sqlStorage.Table(sessionTableName).AutoMigrate(&Session{}); err != nil {
+			return fmt.Errorf("failed to create sessions table '%s': %w", sessionTableName, err)
+		}
+	}
+
+	return nil
 }

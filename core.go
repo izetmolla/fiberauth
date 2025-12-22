@@ -54,19 +54,27 @@ func (a *Authorization) setDefaults() {
 	if a.redisPrefix == "" {
 		a.redisPrefix = defaultRedisPrefix
 	}
+	// Set cookie session name: use config value, or environment variable, or default
 	if a.cookieSessionName == "" || os.Getenv("COOKIE_SESSION_NAME") == "" {
 		a.cookieSessionName = defaultCookieSessionName
 	}
-	if a.mainDomainName != "" && os.Getenv("AUTH_DOMAIN") == "" {
+	
+	// Set main domain name: prioritize environment variable over config, fallback to default
+	// Environment variable takes precedence if set
+	if envDomain := os.Getenv("AUTH_DOMAIN"); envDomain != "" {
+		a.mainDomainName = envDomain
+	} else if a.mainDomainName == "" {
+		// Only use default if neither env var nor config is set
 		a.mainDomainName = defaultMainDomainName
-	} else {
-		a.mainDomainName = os.Getenv("AUTH_DOMAIN")
 	}
 
-	if a.authRedirectURL != "" && os.Getenv("AUTH_REDIRECT_URL") == "" {
+	// Set auth redirect URL: prioritize environment variable over config, fallback to default
+	// Environment variable takes precedence if set
+	if envRedirectURL := os.Getenv("AUTH_REDIRECT_URL"); envRedirectURL != "" {
+		a.authRedirectURL = envRedirectURL
+	} else if a.authRedirectURL == "" {
+		// Only use default if neither env var nor config is set
 		a.authRedirectURL = defaultAuthRedirectURL
-	} else {
-		a.authRedirectURL = os.Getenv("AUTH_REDIRECT_URL")
 	}
 	if a.passwordCost == nil {
 		a.passwordCost = &defaultPasswordCost
@@ -79,6 +87,28 @@ func (a *Authorization) setDefaults() {
 		defaultPasswordMinLength = *a.passwordMinLength
 	}
 
+	// Set default paths if not already set
+	if a.SignInPath == "" {
+		a.SignInPath = defaultSignInPath
+	}
+	if a.SignUpPath == "" {
+		a.SignUpPath = defaultSignUpPath
+	}
+	if a.SignOutPath == "" {
+		a.SignOutPath = defaultSignOutPath
+	}
+	if a.RefreshTokenPath == "" {
+		a.RefreshTokenPath = defaultRefreshTokenPath
+	}
+	if a.ProviderLoginPath == "" {
+		a.ProviderLoginPath = defaultProviderLoginPath
+	}
+	if a.ProviderCallbackPath == "" {
+		a.ProviderCallbackPath = defaultProviderCallbackPath
+	}
+	if a.ProviderLogoutPath == "" {
+		a.ProviderLogoutPath = defaultProviderLogoutPath
+	}
 }
 
 // =============================================================================
@@ -533,26 +563,37 @@ func (a *Authorization) isExcludedPath(excluded []string, path string) bool {
 	return false
 }
 
+// getRealIPAddress extracts the real client IP address from HTTP headers.
+// This is important when the application is behind a proxy or load balancer.
+// Checks headers in order of priority: CF-Connecting-IP (Cloudflare), X-Real-IP, X-Forwarded-For.
+//
+// Parameters:
+//   - c: Fiber context containing the HTTP request
+//
+// Returns:
+//   - string: The real client IP address, or the direct connection IP as fallback
 func (a *Authorization) getRealIPAddress(c fiber.Ctx) string {
-	// Check for Cloudflare's CF-Connecting-IP header first
+	// Check for Cloudflare's CF-Connecting-IP header first (highest priority)
 	if cfIP := c.Get("CF-Connecting-IP"); cfIP != "" {
 		return cfIP
 	}
 
-	// Check for other common real IP headers
+	// Check for X-Real-IP header (commonly used by nginx and other proxies)
 	if realIP := c.Get("X-Real-IP"); realIP != "" {
 		return realIP
 	}
 
+	// Check for X-Forwarded-For header (can contain multiple IPs from proxy chain)
 	if forwardedFor := c.Get("X-Forwarded-For"); forwardedFor != "" {
-		// X-Forwarded-For can contain multiple IPs, take the first one
+		// X-Forwarded-For can contain multiple IPs separated by commas
+		// The first IP is typically the original client IP
 		ips := strings.Split(forwardedFor, ",")
 		if len(ips) > 0 {
 			return strings.TrimSpace(ips[0])
 		}
 	}
 
-	// Fallback to the direct connection IP
+	// Fallback to the direct connection IP if no proxy headers are present
 	return c.IP()
 }
 

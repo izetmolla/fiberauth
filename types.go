@@ -46,6 +46,19 @@ type Config struct {
 	MainDomainName    *string `json:"main_domain_name" yaml:"main_domain_name"`
 	AuthRedirectURL   *string `json:"auth_redirect_url" yaml:"auth_redirect_url"`
 
+	// Table name configuration
+	UsersModelTable    string `json:"users_model_table" yaml:"users_model_table"`       // Custom table name for users (default: "users")
+	SessionModelTable  string `json:"session_model_table" yaml:"session_model_table"`   // Custom table name for sessions (default: "sessions")
+
+	// Path configuration
+	SignInPath           string `json:"sign_in_path" yaml:"sign_in_path"`                     // Path for sign-in endpoint (default: "/auth/signin")
+	SignUpPath           string `json:"sign_up_path" yaml:"sign_up_path"`                     // Path for sign-up endpoint (default: "/auth/signup")
+	SignOutPath          string `json:"sign_out_path" yaml:"sign_out_path"`                   // Path for sign-out endpoint (default: "/auth/signout")
+	RefreshTokenPath     string `json:"refresh_token_path" yaml:"refresh_token_path"`         // Path for refresh token endpoint (default: "/auth/refresh")
+	ProviderLoginPath    string `json:"provider_login_path" yaml:"provider_login_path"`       // Path for provider login endpoint (default: "/auth/provider/:provider")
+	ProviderCallbackPath string `json:"provider_callback_path" yaml:"provider_callback_path"` // Path for provider callback endpoint (default: "/auth/provider/:provider/callback")
+	ProviderLogoutPath   string `json:"provider_logout_path" yaml:"provider_logout_path"`     // Path for provider logout endpoint (default: "/auth/provider/:provider/logout")
+
 	Providers []social.Provider
 }
 

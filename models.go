@@ -23,6 +23,12 @@ type Session struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
+// TableName specifies the table name for Session.
+// This can be overridden by setting SessionModelTable in Authorization struct.
+func (Session) TableName() string {
+	return "sessions"
+}
+
 type User struct {
 	ID        string          `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
 	Username  *string         `json:"username"`
@@ -38,4 +44,10 @@ type User struct {
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+}
+
+// TableName specifies the table name for User.
+// This can be overridden by setting UsersModelTable in Authorization struct.
+func (User) TableName() string {
+	return "users"
 }

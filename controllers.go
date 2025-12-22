@@ -8,14 +8,14 @@ import (
 	"github.com/izetmolla/fiberauth/social/providers/passkey"
 )
 
-// ControllerResponse represents a standardized response structure for controllers
-type ControllerResponse struct {
-	Data    interface{} `json:"data,omitempty"`
-	Error   string      `json:"error,omitempty"`
-	Field   string      `json:"field,omitempty"`
-	Message string      `json:"message,omitempty"`
-}
-
+// CheckEmailController handles the HTTP request for checking if an email exists.
+// This endpoint allows clients to verify if an email is already registered.
+//
+// Parameters:
+//   - c: Fiber context containing the HTTP request
+//
+// Returns:
+//   - error: Fiber error for HTTP response handling
 func (a *Authorization) CheckEmailController(c fiber.Ctx) error {
 	request := new(SignInRequest)
 	if err := a.bindAndValidateRequest(c, request); err != nil {
@@ -175,6 +175,7 @@ func (a *Authorization) SignOutController(c fiber.Ctx) error {
 
 // HandleRefreshTokenController handles the HTTP request for token refresh.
 // Extracts the refresh token from the request and generates a new access token.
+// This controller checks for a special header identifier to determine if it should process the request.
 //
 // Parameters:
 //   - c: Fiber context containing the HTTP request
@@ -186,7 +187,10 @@ func (a *Authorization) SignOutController(c fiber.Ctx) error {
 //
 //	app.Post("/refresh", auth.HandleRefreshTokenController)
 func (a *Authorization) HandleRefreshTokenController(c fiber.Ctx) error {
+	// Check if this request is meant for refresh token handling
+	// The RefreshTokenHandlerIdentifier header is used to identify refresh token requests
 	if c.Get(RefreshTokenHandlerIdentifier, "no") == "no" {
+		// Not a refresh token request, pass to next handler
 		return c.Next()
 	}
 
@@ -299,9 +303,9 @@ func (a *Authorization) PasskeyBeginRegistrationController(c fiber.Ctx) error {
 		return a.handleErrorResponse(c, errors.New("passkey provider not found or invalid type"), fiber.StatusInternalServerError)
 	}
 
-	// Parse request body
+	// Parse request body - must use pointer for binding
 	var req passkey.RegistrationRequest
-	if err := c.Bind().Body(req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return a.handleErrorResponse(c, errors.New("invalid request body"), fiber.StatusBadRequest)
 	}
 
@@ -346,9 +350,9 @@ func (a *Authorization) PasskeyFinishRegistrationController(c fiber.Ctx) error {
 		return a.handleErrorResponse(c, errors.New("passkey provider not found or invalid type"), fiber.StatusInternalServerError)
 	}
 
-	// Parse request body
+	// Parse request body - must use pointer for binding
 	var req passkey.FinishRegistrationRequest
-	if err := c.Bind().Body(req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return a.handleErrorResponse(c, errors.New("invalid request body"), fiber.StatusBadRequest)
 	}
 
@@ -402,7 +406,8 @@ func (a *Authorization) PasskeyBeginLoginController(c fiber.Ctx) error {
 			UserID string `json:"user_id"`
 		}
 		var req LoginRequest
-		if err := c.Bind().Body(req); err == nil && req.UserID != "" {
+		// Must use pointer for binding - ignore error if body parsing fails
+		if err := c.Bind().Body(&req); err == nil && req.UserID != "" {
 			userID = req.UserID
 		}
 	}
@@ -456,7 +461,8 @@ func (a *Authorization) PasskeyFinishLoginController(c fiber.Ctx) error {
 	}
 
 	var req FinishLoginRequest
-	if err := c.Bind().Body(req); err != nil {
+	// Must use pointer for binding
+	if err := c.Bind().Body(&req); err != nil {
 		return a.handleErrorResponse(c, errors.New("invalid request body"), fiber.StatusBadRequest)
 	}
 
@@ -468,8 +474,10 @@ func (a *Authorization) PasskeyFinishLoginController(c fiber.Ctx) error {
 		})
 	}
 
-	// For now, we'll create a successful login response similar to registration
-	// In a real implementation, you would verify the WebAuthn assertion
+	// TODO: Implement proper WebAuthn assertion verification
+	// Currently returns a placeholder response. In a production implementation,
+	// this should verify the WebAuthn assertion credential and create a proper session.
+	// The passkey provider's FinishLoginEndpoint method needs to be implemented.
 	response := fiber.Map{
 		"success": true,
 		"message": "Login completed successfully",

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
 func (a *Authorization) GetSession(sessionID string) (*SessionData, error) {
@@ -245,7 +246,7 @@ func deserializeSessionData(data []byte) (*SessionData, error) {
 
 // getSessionFromDatabase queries the database for session data and caches the result.
 // This is a fallback method when Redis cache misses occur.
-// The method uses raw SQL for better performance and control over the query.
+// Uses GORM model-style queries for cross-database compatibility.
 //
 // Parameters:
 //   - sessionID: The unique session identifier
@@ -254,18 +255,74 @@ func deserializeSessionData(data []byte) (*SessionData, error) {
 //   - *SessionData: Session data if found
 //   - error: Error if session not found or database error occurs
 func (a *Authorization) getSessionFromDatabase(sessionID string) (*SessionData, error) {
-	var sessionData *SessionData
-	// Use Go's time.Now() for cross-driver compatibility
-	// This approach works with MySQL, PostgreSQL, SQLite, and SQL Server
-	// Execute raw SQL query to get session and user data
-	// Using parameterized query with current time for better cross-driver compatibility
-	if err := a.sqlStorage.Raw("SELECT s.id, s.user_id, u.roles, u.metadata,u.options, method FROM sessions s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ? AND s.expires_at > ? AND s.deleted_at IS NULL", sessionID, a.sqlStorage.NowFunc()).Scan(&sessionData).Error; err != nil {
-		return nil, err
+	// Determine table names to use
+	sessionTableName := a.SessionModelTable
+	if sessionTableName == "" {
+		sessionTableName = "sessions"
+	}
+	usersTableName := a.UsersModelTable
+	if usersTableName == "" {
+		usersTableName = "users"
 	}
 
-	// Check if session exists in the database
-	if sessionData == nil {
-		return nil, ErrUnauthorized
+	// Query Session model first - GORM handles table name quoting automatically
+	// This approach works across all database drivers (MySQL, MariaDB, PostgreSQL, SQLite)
+	var session Session
+	sessionQuery := a.sqlStorage.Table(sessionTableName).
+		Where("id = ? AND expires_at > ? AND deleted_at IS NULL", sessionID, a.sqlStorage.NowFunc()).
+		First(&session)
+
+	if sessionQuery.Error != nil {
+		if errors.Is(sessionQuery.Error, gorm.ErrRecordNotFound) {
+			return nil, ErrUnauthorized
+		}
+		return nil, sessionQuery.Error
+	}
+
+	// Query User model separately - GORM handles table name quoting automatically
+	// This ensures cross-database compatibility without manual JOIN syntax
+	var user User
+	userQuery := a.sqlStorage.Table(usersTableName).
+		Where("id = ? AND deleted_at IS NULL", session.UserID).
+		Select("roles, metadata, options").
+		First(&user)
+
+	// Use default empty values if user not found (LEFT JOIN behavior)
+	// This handles the case where a session exists but user was deleted
+	var roles, metadata, options json.RawMessage
+	if userQuery.Error != nil {
+		if !errors.Is(userQuery.Error, gorm.ErrRecordNotFound) {
+			// If it's a real error (not just not found), return it
+			return nil, userQuery.Error
+		}
+		// User not found - use defaults (LEFT JOIN behavior)
+		roles = json.RawMessage(`[]`)
+		metadata = json.RawMessage(`{}`)
+		options = json.RawMessage(`{}`)
+	} else {
+		roles = user.Roles
+		metadata = user.Metadata
+		options = user.Options
+
+		// Ensure non-empty values (handle NULL from database)
+		if len(roles) == 0 {
+			roles = json.RawMessage(`[]`)
+		}
+		if len(metadata) == 0 {
+			metadata = json.RawMessage(`{}`)
+		}
+		if len(options) == 0 {
+			options = json.RawMessage(`{}`)
+		}
+	}
+
+	// Build SessionData from Session and User
+	sessionData := &SessionData{
+		ID:       session.ID,
+		UserID:   session.UserID,
+		Roles:    roles,
+		Metadata: metadata,
+		Options:  options,
 	}
 
 	a.setRedisSession(sessionData)
