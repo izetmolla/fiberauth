@@ -2,11 +2,47 @@ package fiberauth
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+var (
+	// tableNameRegistry stores custom table names for User and Session models
+	// This allows TableName() methods to return configured table names
+	tableNameRegistry = struct {
+		sync.RWMutex
+		usersTable    string
+		sessionsTable string
+	}{
+		usersTable:    "users",
+		sessionsTable: "sessions",
+	}
+)
+
+// SetUsersTableName sets the table name for User model.
+// This is called by Authorization during initialization.
+func SetUsersTableName(name string) {
+	if name == "" {
+		name = "users"
+	}
+	tableNameRegistry.Lock()
+	defer tableNameRegistry.Unlock()
+	tableNameRegistry.usersTable = name
+}
+
+// SetSessionsTableName sets the table name for Session model.
+// This is called by Authorization during initialization.
+func SetSessionsTableName(name string) {
+	if name == "" {
+		name = "sessions"
+	}
+	tableNameRegistry.Lock()
+	defer tableNameRegistry.Unlock()
+	tableNameRegistry.sessionsTable = name
+}
 
 // Server specific settings.
 type Session struct {
@@ -36,9 +72,11 @@ func (s *Session) BeforeCreate(tx *gorm.DB) error {
 }
 
 // TableName specifies the table name for Session.
-// This can be overridden by setting SessionModelTable in Authorization struct.
+// Returns the configured table name from Authorization config, or default "sessions".
 func (Session) TableName() string {
-	return "sessions"
+	tableNameRegistry.RLock()
+	defer tableNameRegistry.RUnlock()
+	return tableNameRegistry.sessionsTable
 }
 
 type User struct {
@@ -83,7 +121,9 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 }
 
 // TableName specifies the table name for User.
-// This can be overridden by setting UsersModelTable in Authorization struct.
+// Returns the configured table name from Authorization config, or default "users".
 func (User) TableName() string {
-	return "users"
+	tableNameRegistry.RLock()
+	defer tableNameRegistry.RUnlock()
+	return tableNameRegistry.usersTable
 }

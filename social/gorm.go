@@ -4,10 +4,33 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+var (
+	// storageTableNameRegistry stores custom table name for StorageItem model
+	// This allows TableName() method to return configured table name
+	storageTableNameRegistry = struct {
+		sync.RWMutex
+		tableName string
+	}{
+		tableName: "storage_items",
+	}
+)
+
+// SetStorageTableName sets the table name for StorageItem model.
+// This can be called to configure a custom table name for storage items.
+func SetStorageTableName(name string) {
+	if name == "" {
+		name = "storage_items"
+	}
+	storageTableNameRegistry.Lock()
+	defer storageTableNameRegistry.Unlock()
+	storageTableNameRegistry.tableName = name
+}
 
 // GormStorage implements StorageInterface for GORM database.
 //
@@ -43,17 +66,23 @@ type GormStorage struct {
 }
 
 // StorageItem represents a storage item in the database.
+// Used for storing session data and other key-value pairs.
 type StorageItem struct {
-	Key       string    `gorm:"primaryKey;type:varchar(255)"`
-	Value     []byte    `gorm:"type:bytea"`
+	Key string `gorm:"primaryKey;type:varchar(255)"`
+	// Value uses blob/bytea type for cross-database compatibility
+	// PostgreSQL: bytea, MySQL: blob, SQLite: blob
+	Value     []byte    `gorm:"type:blob"`
 	ExpiresAt time.Time `gorm:"index"`
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime"`
 }
 
 // TableName specifies the table name for StorageItem.
+// Returns the configured table name from SetStorageTableName, or default "storage_items".
 func (StorageItem) TableName() string {
-	return "storage_items"
+	storageTableNameRegistry.RLock()
+	defer storageTableNameRegistry.RUnlock()
+	return storageTableNameRegistry.tableName
 }
 
 // NewGormStorage creates a new GORM storage instance.

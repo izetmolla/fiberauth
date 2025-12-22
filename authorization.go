@@ -205,6 +205,10 @@ func New(config *Config) (*Authorization, error) {
 		auth.SessionModelTable = "sessions"
 	}
 
+	// Register table names in the global registry so TableName() methods can access them
+	SetUsersTableName(auth.UsersModelTable)
+	SetSessionsTableName(auth.SessionModelTable)
+
 	// Initialize path names from config or use defaults
 	if config.SignInPath != "" {
 		auth.SignInPath = config.SignInPath
@@ -244,7 +248,15 @@ func New(config *Config) (*Authorization, error) {
 
 	// Set default values for optional fields
 	auth.setDefaults()
-	auth.social = social.New(&social.SocialDataConfig{RedisStorage: auth.redisStorage, SQLStorage: auth.sqlStorage, Debug: auth.Debug})
+
+	// Initialize social data with storage table name from config
+	socialConfig := &social.SocialDataConfig{
+		RedisStorage:     auth.redisStorage,
+		SQLStorage:       auth.sqlStorage,
+		Debug:            auth.Debug,
+		StorageTableName: config.StorageTableName,
+	}
+	auth.social = social.New(socialConfig)
 
 	// Run auto-migration if database client is provided
 	if auth.sqlStorage != nil {

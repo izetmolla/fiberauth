@@ -49,6 +49,7 @@ type Config struct {
 	// Table name configuration
 	UsersModelTable    string `json:"users_model_table" yaml:"users_model_table"`       // Custom table name for users (default: "users")
 	SessionModelTable  string `json:"session_model_table" yaml:"session_model_table"`   // Custom table name for sessions (default: "sessions")
+	StorageTableName   string `json:"storage_table_name" yaml:"storage_table_name"`     // Custom table name for storage items (default: "storage_items")
 
 	// Path configuration
 	SignInPath           string `json:"sign_in_path" yaml:"sign_in_path"`                     // Path for sign-in endpoint (default: "/auth/signin")

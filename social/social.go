@@ -31,13 +31,13 @@ var (
 type key int
 
 type SocialDataConfig struct {
-	RedisStorage *redis.Client // Existing Redis client to reuse
-	SQLStorage   *gorm.DB      // Existing GORM database client to reuse
-	Debug        bool          // Enable debug mode for storage operations
+	RedisStorage     *redis.Client // Existing Redis client to reuse
+	SQLStorage       *gorm.DB      // Existing GORM database client to reuse
+	Debug            bool          // Enable debug mode for storage operations
+	StorageTableName string        // Custom table name for storage items (default: "storage_items")
 }
 type SocialData struct {
 	store *session.Store
-	sql   *gorm.DB
 }
 
 // SetDebug enables or disables debug mode for the storage.
@@ -88,6 +88,11 @@ func createStorage(cnf *SocialDataConfig) StorageInterface {
 		return NewRedisStorage(cnf.RedisStorage)
 	}
 	if cnf.SQLStorage != nil {
+		// Register storage table name if configured
+		if cnf.StorageTableName != "" {
+			SetStorageTableName(cnf.StorageTableName)
+		}
+
 		if cnf.Debug {
 			return NewGormStorageWithDebug(cnf.SQLStorage, true)
 		}
