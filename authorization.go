@@ -303,8 +303,15 @@ func (a *Authorization) AutoMigrate() error {
 	userTableExists := a.sqlStorage.Migrator().HasTable(usersTableName)
 	if !userTableExists {
 		// Create users table with custom table name
+		// AutoMigrate handles cross-database compatibility automatically
 		if err := a.sqlStorage.Table(usersTableName).AutoMigrate(&User{}); err != nil {
 			return fmt.Errorf("failed to create users table '%s': %w", usersTableName, err)
+		}
+	} else {
+		// Table exists, but we still need to migrate schema changes
+		// AutoMigrate will add missing columns and indexes without dropping data
+		if err := a.sqlStorage.Table(usersTableName).AutoMigrate(&User{}); err != nil {
+			return fmt.Errorf("failed to migrate users table '%s': %w", usersTableName, err)
 		}
 	}
 
@@ -312,8 +319,15 @@ func (a *Authorization) AutoMigrate() error {
 	sessionTableExists := a.sqlStorage.Migrator().HasTable(sessionTableName)
 	if !sessionTableExists {
 		// Create sessions table with custom table name
+		// AutoMigrate handles cross-database compatibility automatically
 		if err := a.sqlStorage.Table(sessionTableName).AutoMigrate(&Session{}); err != nil {
 			return fmt.Errorf("failed to create sessions table '%s': %w", sessionTableName, err)
+		}
+	} else {
+		// Table exists, but we still need to migrate schema changes
+		// AutoMigrate will add missing columns and indexes without dropping data
+		if err := a.sqlStorage.Table(sessionTableName).AutoMigrate(&Session{}); err != nil {
+			return fmt.Errorf("failed to migrate sessions table '%s': %w", sessionTableName, err)
 		}
 	}
 

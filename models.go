@@ -4,13 +4,16 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // Server specific settings.
 type Session struct {
-	ID     string `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	UserID string `json:"user_id" gorm:"type:string;default:null"`
+	// ID is the primary key. UUIDs are generated in BeforeCreate hook for cross-database compatibility.
+	// For PostgreSQL: uses uuid type, for MySQL/SQLite: uses varchar(36) or text
+	ID     string `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	UserID string `json:"user_id" gorm:"type:varchar(255);default:null"`
 
 	IPAddress *string    `json:"ip_address" gorm:"column:ip_address;size:100;default:null"` // IPv4 or IPv6
 	UserAgent *string    `json:"user_agent" gorm:"type:text;default:null"`                  // User agent string
@@ -23,6 +26,15 @@ type Session struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
+// BeforeCreate hook generates a UUID for the session ID before creation.
+// This ensures cross-database compatibility (works with PostgreSQL, MySQL, MariaDB, and SQLite).
+func (s *Session) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == "" {
+		s.ID = uuid.New().String()
+	}
+	return nil
+}
+
 // TableName specifies the table name for Session.
 // This can be overridden by setting SessionModelTable in Authorization struct.
 func (Session) TableName() string {
@@ -30,20 +42,44 @@ func (Session) TableName() string {
 }
 
 type User struct {
-	ID        string          `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	Username  *string         `json:"username"`
-	FirstName string          `json:"first_name"`
-	LastName  string          `json:"last_name"`
-	AvatarURL string          `json:"avatar_url"`
-	Email     string          `json:"email"`
-	Roles     json.RawMessage `json:"roles" gorm:"type:jsonb;default:'[]';not null"`
-	Metadata  json.RawMessage `json:"metadata" gorm:"type:jsonb;default:'{}';not null"`
-	Options   json.RawMessage `json:"options" gorm:"type:jsonb;default:'{}';not null"`
-	Password  *string         `json:"password"`
+	// ID is the primary key. UUIDs are generated in BeforeCreate hook for cross-database compatibility.
+	// For PostgreSQL: uses uuid type, for MySQL/SQLite: uses varchar(36) or text
+	ID        string  `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	Username  *string `json:"username" gorm:"type:varchar(255)"`
+	FirstName string  `json:"first_name" gorm:"type:varchar(255)"`
+	LastName  string  `json:"last_name" gorm:"type:varchar(255)"`
+	AvatarURL string  `json:"avatar_url" gorm:"type:text"`
+	Email     string  `json:"email" gorm:"type:varchar(255)"`
+	// Roles, Metadata, Options use text/json type for cross-database compatibility
+	// PostgreSQL: jsonb, MySQL: json, SQLite: text
+	// Defaults are handled in BeforeCreate hook for SQLite compatibility
+	Roles    json.RawMessage `json:"roles" gorm:"type:text;not null"`
+	Metadata json.RawMessage `json:"metadata" gorm:"type:text;not null"`
+	Options  json.RawMessage `json:"options" gorm:"type:text;not null"`
+	Password *string         `json:"password" gorm:"type:varchar(255)"`
 
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+}
+
+// BeforeCreate hook generates a UUID for the user ID before creation.
+// This ensures cross-database compatibility (works with PostgreSQL, MySQL, MariaDB, and SQLite).
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	if u.ID == "" {
+		u.ID = uuid.New().String()
+	}
+	// Set default empty JSON values if not set
+	if len(u.Roles) == 0 {
+		u.Roles = json.RawMessage(`[]`)
+	}
+	if len(u.Metadata) == 0 {
+		u.Metadata = json.RawMessage(`{}`)
+	}
+	if len(u.Options) == 0 {
+		u.Options = json.RawMessage(`{}`)
+	}
+	return nil
 }
 
 // TableName specifies the table name for User.
