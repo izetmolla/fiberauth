@@ -130,15 +130,6 @@ type Authorization struct {
 	usersModelTable   string
 	sessionModelTable string
 
-	// Paths
-	signInPath           string
-	signUpPath           string
-	signOutPath          string
-	refreshTokenPath     string
-	providerLoginPath    string
-	providerCallbackPath string
-	providerLogoutPath   string
-
 	// Social authentication
 	social    *social.SocialData
 	providers map[string]social.Provider
@@ -274,42 +265,6 @@ func New(cfg *Config) (*Authorization, error) {
 		}
 	}
 
-	// Set path defaults
-	signInPath := config.DefaultSignInPath
-	if cfg.SignInPath != "" {
-		signInPath = cfg.SignInPath
-	}
-
-	signUpPath := config.DefaultSignUpPath
-	if cfg.SignUpPath != "" {
-		signUpPath = cfg.SignUpPath
-	}
-
-	signOutPath := config.DefaultSignOutPath
-	if cfg.SignOutPath != "" {
-		signOutPath = cfg.SignOutPath
-	}
-
-	refreshTokenPath := config.DefaultRefreshTokenPath
-	if cfg.RefreshTokenPath != "" {
-		refreshTokenPath = cfg.RefreshTokenPath
-	}
-
-	providerLoginPath := config.DefaultProviderLoginPath
-	if cfg.ProviderLoginPath != "" {
-		providerLoginPath = cfg.ProviderLoginPath
-	}
-
-	providerCallbackPath := config.DefaultProviderCallbackPath
-	if cfg.ProviderCallbackPath != "" {
-		providerCallbackPath = cfg.ProviderCallbackPath
-	}
-
-	providerLogoutPath := config.DefaultProviderLogoutPath
-	if cfg.ProviderLogoutPath != "" {
-		providerLogoutPath = cfg.ProviderLogoutPath
-	}
-
 	auth := &Authorization{
 		Debug:                cfg.Debug,
 		dbManager:            dbMgr,
@@ -329,13 +284,6 @@ func New(cfg *Config) (*Authorization, error) {
 		passwordMinLength:    passwordMinLength,
 		usersModelTable:      usersModelTable,
 		sessionModelTable:    sessionModelTable,
-		signInPath:           signInPath,
-		signUpPath:           signUpPath,
-		signOutPath:          signOutPath,
-		refreshTokenPath:     refreshTokenPath,
-		providerLoginPath:    providerLoginPath,
-		providerCallbackPath: providerCallbackPath,
-		providerLogoutPath:   providerLogoutPath,
 		social:               socialData,
 		providers:            providers,
 		sqlStorage:           cfg.DbClient,

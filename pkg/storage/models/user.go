@@ -93,4 +93,3 @@ func (User) TableName() string {
 	defer tableNameRegistry.RUnlock()
 	return tableNameRegistry.usersTable
 }
-

@@ -30,14 +30,6 @@ type Config struct {
 	RefreshTokenLifetime *string `json:"refresh_token_lifetime" yaml:"refresh_token_lifetime"` // Lifetime for the refresh token (e.g., "365d")
 	SigningMethodHMAC    *string `json:"signing_method_hmac" yaml:"signing_method_hmac"`       // Signing method (e.g., "HS256")
 
-	// Social provider configuration
-	GoogleClientID     *string `json:"google_client_id" yaml:"google_client_id"`
-	GoogleClientSecret *string `json:"google_client_secret" yaml:"google_client_secret"`
-	GoogleRedirectURL  *string `json:"google_redirect_url" yaml:"google_redirect_url"`
-	GitHubClientID     *string `json:"github_client_id" yaml:"github_client_id"`
-	GitHubClientSecret *string `json:"github_client_secret" yaml:"github_client_secret"`
-	GitHubRedirectURL  *string `json:"github_redirect_url" yaml:"github_redirect_url"`
-
 	// Password configuration
 	PasswordCost      *int `json:"password_cost" yaml:"password_cost"`
 	PasswordMinLength *int `json:"password_min_length" yaml:"password_min_length"`
@@ -51,15 +43,6 @@ type Config struct {
 	UsersModelTable   string `json:"users_model_table" yaml:"users_model_table"`     // Custom table name for users (default: "users")
 	SessionModelTable string `json:"session_model_table" yaml:"session_model_table"` // Custom table name for sessions (default: "sessions")
 	StorageTableName  string `json:"storage_table_name" yaml:"storage_table_name"`   // Custom table name for storage items (default: "storage_items")
-
-	// Path configuration
-	SignInPath           string `json:"sign_in_path" yaml:"sign_in_path"`                     // Path for sign-in endpoint (default: "/auth/signin")
-	SignUpPath           string `json:"sign_up_path" yaml:"sign_up_path"`                     // Path for sign-up endpoint (default: "/auth/signup")
-	SignOutPath          string `json:"sign_out_path" yaml:"sign_out_path"`                   // Path for sign-out endpoint (default: "/auth/signout")
-	RefreshTokenPath     string `json:"refresh_token_path" yaml:"refresh_token_path"`         // Path for refresh token endpoint (default: "/auth/refresh")
-	ProviderLoginPath    string `json:"provider_login_path" yaml:"provider_login_path"`       // Path for provider login endpoint (default: "/auth/provider/:provider")
-	ProviderCallbackPath string `json:"provider_callback_path" yaml:"provider_callback_path"` // Path for provider callback endpoint (default: "/auth/provider/:provider/callback")
-	ProviderLogoutPath   string `json:"provider_logout_path" yaml:"provider_logout_path"`     // Path for provider logout endpoint (default: "/auth/provider/:provider/logout")
 
 	Providers []interface{} // Social providers (use []interface{} for flexibility)
 }
@@ -128,4 +111,3 @@ type SignOutRequest struct {
 type SignOutResponse struct {
 	Message string `json:"message"`
 }
-

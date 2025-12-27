@@ -60,4 +60,3 @@ func (Session) TableName() string {
 	defer tableNameRegistry.RUnlock()
 	return tableNameRegistry.sessionsTable
 }
-

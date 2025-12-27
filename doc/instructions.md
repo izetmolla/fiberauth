@@ -163,12 +163,6 @@ auth, err := fiberauth.New(&fiberauth.Config{
     UsersModelTable:   "custom_users",
     SessionModelTable: "custom_sessions",
     
-    // Optional - Custom API paths
-    SignInPath:        "/api/auth/signin",
-    SignUpPath:        "/api/auth/signup",
-    SignOutPath:       "/api/auth/signout",
-    RefreshTokenPath:  "/api/auth/refresh",
-    
     // Optional - Social providers
     Providers: []interface{}{
         google.New(clientID, secret, callback, scopes...),

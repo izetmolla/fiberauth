@@ -39,14 +39,4 @@ var (
 
 	// DefaultPasswordMinLength is the default minimum length for password
 	DefaultPasswordMinLength = 3
-
-	// Default path constants
-	DefaultSignInPath           = "/auth/signin"
-	DefaultSignUpPath           = "/auth/signup"
-	DefaultSignOutPath          = "/auth/signout"
-	DefaultRefreshTokenPath     = "/auth/refresh"
-	DefaultProviderLoginPath    = "/auth/provider/:provider"
-	DefaultProviderCallbackPath = "/auth/provider/:provider/callback"
-	DefaultProviderLogoutPath   = "/auth/provider/:provider/logout"
 )
-
