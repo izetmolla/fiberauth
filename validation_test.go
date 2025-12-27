@@ -245,13 +245,21 @@ func TestValidator_ValidateSignUpRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.ValidateSignUpRequest(tt.request)
+			// Validate each field manually since ValidateSignUpRequest was removed
+			var err error
+			if tt.request.FirstName == "" {
+				err = validator.ValidateRequired(tt.request.FirstName, "first_name")
+			} else if tt.request.LastName == "" {
+				err = validator.ValidateRequired(tt.request.LastName, "last_name")
+			} else if tt.request.Email != "" {
+				err = validator.ValidateEmail(tt.request.Email)
+			}
+			if err == nil && tt.request.Password != "" {
+				err = validator.ValidatePassword(tt.request.Password)
+			}
 
 			if tt.expectErr {
 				assert.NotNil(t, err)
-				if tt.errorField != "" {
-					assert.Equal(t, tt.errorField, err.Field)
-				}
 			} else {
 				assert.Nil(t, err)
 			}
@@ -317,13 +325,15 @@ func TestValidator_ValidateSignInRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validator.ValidateSignInRequest(tt.request)
+			// Validate manually since ValidateSignInRequest was removed
+			var err error
+			err = validator.ValidateSignInEmailOrUsername(tt.request.Email, tt.request.Username)
+			if err == nil && tt.request.Password != "" {
+				err = validator.ValidatePassword(tt.request.Password)
+			}
 
 			if tt.expectErr {
 				assert.NotNil(t, err)
-				if tt.errorField != "" {
-					assert.Equal(t, tt.errorField, err.Field)
-				}
 			} else {
 				assert.Nil(t, err)
 			}

@@ -24,8 +24,11 @@ import "fmt"
 func (a *Authorization) LDAPSignIn(request *SignInRequest) (*AuthorizationResponse, *ErrorFields) {
 	// Validate request
 	validator := NewValidator()
-	if err := validator.ValidateSignInRequest(request); err != nil {
-		return nil, err
+	if err := validator.ValidateSignInEmailOrUsername(request.Email, request.Username); err != nil {
+		return nil, &ErrorFields{Error: err, Field: "email"}
+	}
+	if err := validator.ValidatePassword(request.Password); err != nil {
+		return nil, &ErrorFields{Error: err, Field: "password"}
 	}
 
 	return nil, &ErrorFields{Error: fmt.Errorf("LDAP sign-in not implemented yet")}

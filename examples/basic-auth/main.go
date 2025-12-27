@@ -83,12 +83,17 @@ func (b *BasicAuthExample) handleSignUp(c fiber.Ctx) error {
 
 	// Validate the request
 	validator := fiberauth.NewValidator()
-	if err := validator.ValidateSignUpRequest(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error":   true,
-			"field":   err.Field,
-			"message": err.Error.Error(),
-		})
+	if err := validator.ValidateRequired(req.FirstName, "first_name"); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": true, "field": "first_name", "message": err.Error()})
+	}
+	if err := validator.ValidateRequired(req.LastName, "last_name"); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": true, "field": "last_name", "message": err.Error()})
+	}
+	if err := validator.ValidateEmail(req.Email); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": true, "field": "email", "message": err.Error()})
+	}
+	if err := validator.ValidatePassword(req.Password); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": true, "field": "password", "message": err.Error()})
 	}
 
 	// Attempt to create the user
@@ -123,12 +128,11 @@ func (b *BasicAuthExample) handleSignIn(c fiber.Ctx) error {
 
 	// Validate the request
 	validator := fiberauth.NewValidator()
-	if err := validator.ValidateSignInRequest(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error":   true,
-			"field":   err.Field,
-			"message": err.Error.Error(),
-		})
+	if err := validator.ValidateSignInEmailOrUsername(req.Email, req.Username); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": true, "field": "email", "message": err.Error()})
+	}
+	if err := validator.ValidatePassword(req.Password); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": true, "field": "password", "message": err.Error()})
 	}
 
 	// Attempt to authenticate the user

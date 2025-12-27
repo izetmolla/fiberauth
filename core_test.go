@@ -216,7 +216,7 @@ func TestAuthorization_ExtractToken(t *testing.T) {
 
 // TestAuthorization_hasRequiredRole tests role checking functionality
 func TestAuthorization_hasRequiredRole(t *testing.T) {
-	auth := &Authorization{}
+	// Use exported helper function
 
 	tests := []struct {
 		name          string
@@ -252,7 +252,7 @@ func TestAuthorization_hasRequiredRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := auth.hasRequiredRole(tt.requiredRoles, tt.userRoles)
+			result := HasRequiredRole(tt.requiredRoles, tt.userRoles)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -260,7 +260,7 @@ func TestAuthorization_hasRequiredRole(t *testing.T) {
 
 // TestAuthorization_hasRequiredRoleFromJSON tests JSON role checking
 func TestAuthorization_hasRequiredRoleFromJSON(t *testing.T) {
-	auth := &Authorization{}
+	// Use exported helper function
 
 	tests := []struct {
 		name          string
@@ -296,7 +296,7 @@ func TestAuthorization_hasRequiredRoleFromJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := auth.hasRequiredRoleFromJSON(tt.requiredRoles, tt.userRoles)
+			result := HasRequiredRoleFromJSON(tt.requiredRoles, tt.userRoles)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

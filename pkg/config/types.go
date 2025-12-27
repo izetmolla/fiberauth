@@ -1,10 +1,11 @@
-package fiberauth
+// Package config provides configuration types for the authentication system.
+// This package defines all configuration structures with minimal dependencies.
+package config
 
 import (
 	"encoding/json"
 	"time"
 
-	"github.com/izetmolla/fiberauth/social"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -47,9 +48,9 @@ type Config struct {
 	AuthRedirectURL   *string `json:"auth_redirect_url" yaml:"auth_redirect_url"`
 
 	// Table name configuration
-	UsersModelTable    string `json:"users_model_table" yaml:"users_model_table"`       // Custom table name for users (default: "users")
-	SessionModelTable  string `json:"session_model_table" yaml:"session_model_table"`   // Custom table name for sessions (default: "sessions")
-	StorageTableName   string `json:"storage_table_name" yaml:"storage_table_name"`     // Custom table name for storage items (default: "storage_items")
+	UsersModelTable   string `json:"users_model_table" yaml:"users_model_table"`     // Custom table name for users (default: "users")
+	SessionModelTable string `json:"session_model_table" yaml:"session_model_table"` // Custom table name for sessions (default: "sessions")
+	StorageTableName  string `json:"storage_table_name" yaml:"storage_table_name"`   // Custom table name for storage items (default: "storage_items")
 
 	// Path configuration
 	SignInPath           string `json:"sign_in_path" yaml:"sign_in_path"`                     // Path for sign-in endpoint (default: "/auth/signin")
@@ -60,9 +61,10 @@ type Config struct {
 	ProviderCallbackPath string `json:"provider_callback_path" yaml:"provider_callback_path"` // Path for provider callback endpoint (default: "/auth/provider/:provider/callback")
 	ProviderLogoutPath   string `json:"provider_logout_path" yaml:"provider_logout_path"`     // Path for provider logout endpoint (default: "/auth/provider/:provider/logout")
 
-	Providers []social.Provider
+	Providers []interface{} // Social providers (use []interface{} for flexibility)
 }
 
+// AuthConfig represents middleware authentication configuration.
 type AuthConfig struct {
 	ExcludedPaths    []string `json:"excluded_paths" yaml:"excluded_paths"`
 	Roles            []string `json:"roles" yaml:"roles"`
@@ -126,3 +128,4 @@ type SignOutRequest struct {
 type SignOutResponse struct {
 	Message string `json:"message"`
 }
+

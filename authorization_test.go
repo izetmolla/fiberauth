@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 // TestNew tests authorization initialization
@@ -63,28 +65,37 @@ func TestAuthorization_GetJWTSecret(t *testing.T) {
 
 // TestAuthorization_DefaultValues tests default value setting
 func TestAuthorization_DefaultValues(t *testing.T) {
-	auth := &Authorization{}
-	auth.setDefaults()
+	// Test defaults are applied through New()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	assert.NoError(t, err)
 
-	// Test that default values are set
-	assert.NotNil(t, auth.accessTokenLifetime)
-	assert.NotNil(t, auth.refreshTokenLifetime)
-	assert.NotNil(t, auth.signingMethodHMAC)
-	assert.NotZero(t, auth.redisTTL)
-	assert.NotEmpty(t, auth.redisPrefix)
+	auth, err := New(&Config{
+		JWTSecret: "test-secret",
+		DbClient:  db,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, auth)
+
+	// Verify auth was created with defaults
+	assert.NotEmpty(t, auth.GetJWTSecret())
+	assert.NotEmpty(t, auth.GetCookieSessionName())
 }
 
 // TestAuthorization_Configuration tests configuration application
 func TestAuthorization_Configuration(t *testing.T) {
+	// Test config is applied through New()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	assert.NoError(t, err)
+
 	config := &Config{
 		JWTSecret: "test-secret-key",
 		Debug:     true,
+		DbClient:  db,
 	}
 
-	auth := &Authorization{}
-	auth.applyConfig(config)
-
-	assert.Equal(t, config.JWTSecret, auth.jwtSecret)
+	auth, err := New(config)
+	assert.NoError(t, err)
+	assert.Equal(t, config.JWTSecret, auth.GetJWTSecret())
 }
 
 // TestAuthorization_Initialization tests full initialization process
@@ -196,20 +207,11 @@ func TestAuthorization_ConfigurationValidation(t *testing.T) {
 func TestAuthorization_StructFields(t *testing.T) {
 	auth := &Authorization{}
 
-	// Test that all required fields exist (this is a compile-time check)
-	// If any of these fields don't exist, the test will fail to compile
+	// Test that auth has necessary methods (testing behavior, not implementation)
 	_ = auth.Debug
-	_ = auth.jwtSecret
-	_ = auth.sqlStorage
-	_ = auth.redisStorage
-	_ = auth.redisPrefix
-	_ = auth.redisTTL
-	_ = auth.accessTokenLifetime
-	_ = auth.refreshTokenLifetime
-	_ = auth.signingMethodHMAC
-	_ = auth.cookieSessionName
-	_ = auth.mainDomainName
-	_ = auth.authRedirectURL
+	_ = auth.GetJWTSecret()
+	_ = auth.GetCookieSessionName()
+	// Other fields are private - test through public methods
 	_ = auth.social
 	_ = auth.providers
 }

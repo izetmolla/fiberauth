@@ -1,4 +1,6 @@
-package fiberauth
+// Package tokens provides JWT token generation and validation.
+// This package isolates JWT functionality to prevent importing JWT libraries unnecessarily.
+package tokens
 
 import (
 	"encoding/json"
@@ -40,19 +42,51 @@ type JWTOptions struct {
 	Method    string          `json:"method"`     // Optional method to include in the token
 }
 
-// GenerateJWT generates a JWT and a refresh token for the given user and options.
+// Manager handles JWT token operations.
+type Manager struct {
+	jwtSecret            string
+	accessTokenLifetime  string
+	refreshTokenLifetime string
+	signingMethodHMAC    string
+}
+
+// NewManager creates a new JWT token manager.
 //
-// Params:
-//
-//	opt *JWTOptions: Options for generating the JWT, including user ID, secret, lifetimes, and signing method.
+// Parameters:
+//   - jwtSecret: Secret key for signing tokens
+//   - accessTokenLifetime: Lifetime for access tokens (e.g., "30s", "1h")
+//   - refreshTokenLifetime: Lifetime for refresh tokens (e.g., "365d")
+//   - signingMethodHMAC: Signing method (e.g., "HS256", "HS384", "HS512")
 //
 // Returns:
+//   - *Manager: Token manager instance
+func NewManager(jwtSecret, accessTokenLifetime, refreshTokenLifetime, signingMethodHMAC string) *Manager {
+	if accessTokenLifetime == "" {
+		accessTokenLifetime = "30s"
+	}
+	if refreshTokenLifetime == "" {
+		refreshTokenLifetime = "365d"
+	}
+	if signingMethodHMAC == "" {
+		signingMethodHMAC = "HS256"
+	}
+	
+	return &Manager{
+		jwtSecret:            jwtSecret,
+		accessTokenLifetime:  accessTokenLifetime,
+		refreshTokenLifetime: refreshTokenLifetime,
+		signingMethodHMAC:    signingMethodHMAC,
+	}
+}
+
+// GenerateJWT generates a JWT and a refresh token for the given user and options.
 //
-//	accessToken string: The signed JWT access token.
-//	refreshToken string: The signed JWT refresh token.
-//	err error: Error if token generation fails, otherwise nil.
-func (a *Authorization) GenerateJWT(opt *JWTOptions) (accessToken, refreshToken string, err error) {
-	accessExpDuration, err := ParseCustomDuration(*a.accessTokenLifetime, "30s")
+// Returns:
+//   - accessToken string: The signed JWT access token
+//   - refreshToken string: The signed JWT refresh token
+//   - err error: Error if token generation fails, otherwise nil
+func (m *Manager) GenerateJWT(opt *JWTOptions) (accessToken, refreshToken string, err error) {
+	accessExpDuration, err := ParseCustomDuration(m.accessTokenLifetime, "30s")
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse access token lifetime: %w", err)
 	}
@@ -66,15 +100,15 @@ func (a *Authorization) GenerateJWT(opt *JWTOptions) (accessToken, refreshToken 
 		},
 	}
 
-	signingMethod := GetSigningMethod(*a.signingMethodHMAC)
+	signingMethod := GetSigningMethod(m.signingMethodHMAC)
 
 	token := jwt.NewWithClaims(signingMethod, claims)
-	accessToken, err = token.SignedString([]byte(a.jwtSecret))
+	accessToken, err = token.SignedString([]byte(m.jwtSecret))
 	if err != nil {
 		return "", "", err
 	}
 
-	refreshExpDuration, err := ParseCustomDuration(*a.refreshTokenLifetime, "365d")
+	refreshExpDuration, err := ParseCustomDuration(m.refreshTokenLifetime, "365d")
 	if err != nil {
 		return "", "", fmt.Errorf("failed to parse refresh token lifetime: %w", err)
 	}
@@ -91,12 +125,66 @@ func (a *Authorization) GenerateJWT(opt *JWTOptions) (accessToken, refreshToken 
 	}
 
 	refreshTokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	refreshToken, err = refreshTokenObj.SignedString([]byte(a.jwtSecret))
+	refreshToken, err = refreshTokenObj.SignedString([]byte(m.jwtSecret))
 	if err != nil {
 		return "", "", err
 	}
 
 	return accessToken, refreshToken, nil
+}
+
+// RefreshAccessToken generates a new access token using the provided JWT options.
+//
+// Parameters:
+//   - opt: JWT options containing user ID, metadata, and roles
+//
+// Returns:
+//   - string: The new access token
+//   - error: Error if token generation fails
+func (m *Manager) RefreshAccessToken(opt *JWTOptions) (string, error) {
+	accessExpDuration, err := ParseCustomDuration(m.accessTokenLifetime, "30s")
+	if err != nil {
+		return "", fmt.Errorf("failed to parse access token lifetime: %w", err)
+	}
+	expirationTime := time.Now().Add(accessExpDuration)
+	claims := &Claims{
+		UserID:   opt.UserID,
+		Metadata: opt.Metadata,
+		Roles:    opt.Roles,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
+	}
+
+	token := jwt.NewWithClaims(GetSigningMethod(m.signingMethodHMAC), claims)
+	return token.SignedString([]byte(m.jwtSecret))
+}
+
+// ExtractToken parses and validates a JWT token string.
+//
+// Parameters:
+//   - tokenString: The JWT token string to parse
+//
+// Returns:
+//   - *RefreshTokenClaims: The parsed token claims
+//   - error: Error if token parsing fails
+func (m *Manager) ExtractToken(tokenString string) (*RefreshTokenClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &RefreshTokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(m.jwtSecret), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(*RefreshTokenClaims); ok && token.Valid {
+		return claims, nil
+	}
+
+	return nil, errors.New("invalid token")
 }
 
 // GetSigningMethod returns the JWT signing method based on the provided string.
@@ -107,11 +195,6 @@ func (a *Authorization) GenerateJWT(opt *JWTOptions) (accessToken, refreshToken 
 //
 // Returns:
 //   - *jwt.SigningMethodHMAC: The corresponding signing method
-//
-// Example:
-//
-//	signingMethod := GetSigningMethod("HS256")
-//	// Returns jwt.SigningMethodHS256
 func GetSigningMethod(method string) *jwt.SigningMethodHMAC {
 	switch strings.ToLower(method) {
 	case "hs256":
@@ -134,14 +217,6 @@ func GetSigningMethod(method string) *jwt.SigningMethodHMAC {
 // Returns:
 //   - time.Duration: The parsed duration
 //   - error: Error if parsing fails
-//
-// Example:
-//
-//	duration, err := ParseCustomDuration("30s", "1m")
-//	if err != nil {
-//	    // Handle error
-//	}
-//	// duration will be 30 seconds
 func ParseCustomDuration(input, defaultInput string) (time.Duration, error) {
 	if input == "" {
 		input = defaultInput
@@ -181,45 +256,6 @@ func ParseCustomDuration(input, defaultInput string) (time.Duration, error) {
 	return time.Duration(num) * multiplier, nil
 }
 
-// RefreshAccessToken generates a new access token using the provided JWT options.
-// This function is typically used to refresh expired access tokens.
-//
-// Parameters:
-//   - opt: JWT options containing user ID, metadata, and roles
-//
-// Returns:
-//   - string: The new access token
-//   - error: Error if token generation fails
-//
-// Example:
-//
-//	newToken, err := auth.RefreshAccessToken(&JWTOptions{
-//	    UserID:   "user-123",
-//	    Metadata: metadata,
-//	    Roles:    roles,
-//	})
-//	if err != nil {
-//	    // Handle error
-//	}
-func (a *Authorization) RefreshAccessToken(opt *JWTOptions) (string, error) {
-	accessExpDuration, err := ParseCustomDuration(*a.accessTokenLifetime, "30s")
-	if err != nil {
-		return "", fmt.Errorf("failed to parse access token lifetime: %w", err)
-	}
-	expirationTime := time.Now().Add(accessExpDuration)
-	claims := &Claims{
-		UserID:   opt.UserID,
-		Metadata: opt.Metadata,
-		Roles:    opt.Roles,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
-	}
-
-	token := jwt.NewWithClaims(GetSigningMethod(*a.signingMethodHMAC), claims)
-	return token.SignedString([]byte(a.jwtSecret))
-}
-
 // FormatRoles converts JSON raw message roles to a string slice.
 // Returns an empty slice if parsing fails.
 //
@@ -228,12 +264,7 @@ func (a *Authorization) RefreshAccessToken(opt *JWTOptions) (string, error) {
 //
 // Returns:
 //   - []string: Array of role strings
-//
-// Example:
-//
-//	roles := auth.FormatRoles(json.RawMessage(`["admin", "user"]`))
-//	// Returns: []string{"admin", "user"}
-func (a *Authorization) FormatRoles(dbRoles json.RawMessage) []string {
+func FormatRoles(dbRoles json.RawMessage) []string {
 	var roles []string
 	err := json.Unmarshal(dbRoles, &roles)
 	if err != nil {
@@ -243,7 +274,6 @@ func (a *Authorization) FormatRoles(dbRoles json.RawMessage) []string {
 }
 
 // GetUser extracts the user claims from the provided interface.
-// It returns an error if the user is not found or if the type assertion fails.
 //
 // Parameters:
 //   - userInterface: The interface containing user claims (typically from context)
@@ -251,14 +281,6 @@ func (a *Authorization) FormatRoles(dbRoles json.RawMessage) []string {
 // Returns:
 //   - *Claims: Pointer to Claims struct if successful
 //   - error: Error if user not found or type assertion fails
-//
-// Example:
-//
-//	claims, err := GetUser(ctx.Value("user"))
-//	if err != nil {
-//	    // Handle error
-//	}
-
 func GetUser(userInterface any) (*Claims, error) {
 	if userInterface == nil {
 		return nil, errors.New("user not found in context")
@@ -270,7 +292,6 @@ func GetUser(userInterface any) (*Claims, error) {
 	}
 
 	// Try to handle JWT token structure using reflection
-	// The userInterface appears to be a struct with fields
 	userValue := reflect.ValueOf(userInterface)
 	if userValue.Kind() == reflect.Pointer {
 		userValue = userValue.Elem()
@@ -313,43 +334,14 @@ func GetUser(userInterface any) (*Claims, error) {
 	return nil, errors.New("invalid user claims type")
 }
 
-// GetUser is a method on Authorization that extracts user claims from the provided interface.
-// It wraps the standalone GetUser function for convenience.
+// GetLocalUser extracts the user claims from the provided interface with generic type.
 //
 // Parameters:
 //   - userInterface: The interface containing user claims (typically from context)
 //
 // Returns:
-//   - *Claims: Pointer to Claims struct if successful
+//   - *T: Pointer to generic type T if successful
 //   - error: Error if user not found or type assertion fails
-//
-// Example:
-//
-//	claims, err := auth.GetUser(ctx.Value("user"))
-//	if err != nil {
-//	    // Handle error
-//	}
-func (*Authorization) GetUser(userInterface any) (*Claims, error) {
-	return GetUser(userInterface)
-}
-
-// GetLocalUser extracts the user claims from the provided interface.
-// It returns an error if the user is not found or if the type assertion fails.
-//
-// Parameters:
-//   - userInterface: The interface containing user claims (typically from context)
-//
-// Returns:
-//   - *Claims: Pointer to Claims struct if successful
-//   - error: Error if user not found or type assertion fails
-//
-// Example:
-//
-//	claims, err := GetLocalUser(ctx.Value("user"))
-//	if err != nil {
-//	    // Handle error
-//	}
-
 func GetLocalUser[T any](userInterface any) (*T, error) {
 	if userInterface == nil {
 		return nil, errors.New("user not found in context")
@@ -363,3 +355,4 @@ func GetLocalUser[T any](userInterface any) (*T, error) {
 
 	return claims, nil
 }
+

@@ -1,382 +1,330 @@
-# Authorization Package Examples
+# FiberAuth Examples
 
-This directory contains comprehensive examples demonstrating how to use the authorization package for various authentication and authorization scenarios.
+This directory contains comprehensive examples demonstrating various FiberAuth use cases.
 
-## 📁 Examples Structure
+## 📁 Examples Overview
 
-```
-examples/
-├── README.md                    # This documentation file
-├── basic-auth/                  # Basic authentication examples
-│   ├── main.go                 # Simple sign-in/sign-up example
-│   └── README.md               # Basic auth documentation
-├── social-auth/                 # Social authentication examples
-│   ├── main.go                 # OAuth provider examples
-│   ├── google-auth.go          # Google OAuth example
-│   └── README.md               # Social auth documentation
-├── middleware/                  # Middleware usage examples
-│   ├── main.go                 # JWT and role-based middleware
-│   ├── jwt-middleware.go       # JWT authentication middleware
-│   └── README.md               # Middleware documentation
-├── session-management/          # Session handling examples
-│   ├── main.go                 # Session creation and management
-│   └── README.md               # Session documentation
-├── error-handling/             # Error handling examples
-│   ├── main.go                 # Error handling patterns
-│   └── README.md               # Error handling documentation
-└── integration/                # Full integration examples
-    ├── main.go                 # Complete application example
-    └── README.md               # Integration documentation
-```
+### 1. **Minimal** (`minimal/`)
+The simplest possible setup - just database and JWT authentication.
 
-## 🚀 Quick Start
+**Features:**
+- SQLite database
+- No Redis caching
+- No social providers
+- Basic SignUp/SignIn/SignOut
+- JWT token authentication
 
-### Prerequisites
+**Use when:**
+- Getting started with FiberAuth
+- Building a simple application
+- Don't need advanced features
 
-1. **Go 1.21+** - Required for the authorization package
-2. **PostgreSQL** - For user data storage
-3. **Redis** - For session management (optional)
-4. **Environment Variables** - Configure your secrets
-
-### Environment Setup
-
-Create a `.env` file in your project root:
-
+**Run:**
 ```bash
-# Database Configuration
-POSTGRES_URL=postgres://username:password@localhost:5432/auth_db
-
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-here
-
-# Redis Configuration (optional)
-REDIS_URL=redis://localhost:6379
-
-# Domain Configuration
-AUTH_DOMAIN=example.com
-AUTH_REDIRECT_URL=https://example.com/callback
-
-# Social Providers (optional)
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GITHUB_CLIENT_ID=your-github-client-id
-GITHUB_CLIENT_SECRET=your-github-client-secret
+cd minimal
+go run main.go
 ```
 
-### Basic Usage
+---
 
-```go
-package main
+### 2. **With Redis** (`with-redis/`)
+Production-ready setup with Redis caching for improved performance.
 
-import (
-    "log"
-    "github.com/izetmolla/fiberauth"
-)
+**Features:**
+- PostgreSQL database
+- Redis session caching
+- JWT and session-based auth
+- Role-based access control
+- Faster session lookups
 
-func main() {
-    // Initialize authorization service
-    config := &fiberauth.Config{
-        JWTSecret: "your-secret-key",
-        Debug:     true,
-    }
-    
-    auth, err := fiberauth.New(config)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    // Use the authorization service
-    // ... see examples below
-}
+**Use when:**
+- Building a production application
+- Need high performance
+- Have multiple server instances
+- Want session management
+
+**Run:**
+```bash
+# Start PostgreSQL and Redis
+docker-compose up -d
+
+cd with-redis
+go run main.go
 ```
 
-## 📚 Example Categories
+---
 
-### 1. Basic Authentication
+### 3. **With Social** (`with-social/`)
+OAuth integration with Google and GitHub providers.
 
-**Location**: `basic-auth/`
-
-Demonstrates fundamental authentication operations:
-- User registration (sign-up)
-- User login (sign-in)
-- Password validation
-- Token management
-
-**Key Features**:
-- Email/password authentication
-- JWT token generation
-- Password hashing with bcrypt
-- Input validation
-
-### 2. Social Authentication
-
-**Location**: `social-auth/`
-
-Shows how to integrate OAuth providers:
+**Features:**
 - Google OAuth
 - GitHub OAuth
-- Custom provider integration
-- Social user profile handling
+- Traditional email/password auth
+- Social profile import
+- HTML login page
 
-**Key Features**:
-- OAuth 2.0 flow
-- Social user creation
-- Profile data mapping
-- Provider management
+**Use when:**
+- Want social login
+- Need OAuth integration
+- Building consumer-facing apps
 
-### 3. Middleware Usage
+**Setup:**
+```bash
+# Set environment variables
+export GOOGLE_CLIENT_ID="your-id"
+export GOOGLE_CLIENT_SECRET="your-secret"
+export GITHUB_CLIENT_ID="your-id"
+export GITHUB_CLIENT_SECRET="your-secret"
 
-**Location**: `middleware/`
+cd with-social
+go run main.go
+```
 
-Demonstrates middleware integration:
-- JWT authentication middleware
-- Role-based access control
-- Route protection
-- Custom middleware creation
+---
 
-**Key Features**:
-- Automatic token validation
-- Role checking
-- Route protection
+### 4. **RBAC** (`rbac/`)
+Complete Role-Based Access Control implementation.
+
+**Features:**
+- Multiple role levels (user, moderator, admin, superadmin)
+- Role hierarchy
+- Route-level protection
+- Custom role checking
+- Fine-grained permissions
+
+**Use when:**
+- Need complex permissions
+- Building enterprise applications
+- Have different user types
+- Need admin panels
+
+**Run:**
+```bash
+cd rbac
+go run main.go
+```
+
+---
+
+### 5. **Production Ready** (`production-ready/`)
+Full production setup with all best practices.
+
+**Features:**
+- PostgreSQL + Redis
+- Google OAuth
+- Rate limiting
+- CORS configuration
+- Health checks
+- Graceful shutdown
+- Error handling
+- Logging
+- Environment configuration
+- Docker ready
+
+**Use when:**
+- Deploying to production
+- Need enterprise features
+- Want best practices
+- Require monitoring
+
+**Run:**
+```bash
+cd production-ready
+go run main.go
+```
+
+---
+
+### 6. **Basic Auth** (`basic-auth/`)
+Original basic authentication example (legacy).
+
+**Features:**
+- Simple authentication
+- Custom validation
 - Error handling
 
-### 4. Session Management
+---
 
-**Location**: `session-management/`
+### 7. **Error Handling** (`error-handling/`)
+Demonstrates proper error handling patterns (legacy).
 
-Shows session handling capabilities:
-- Session creation
-- Cookie management
-- Session storage
-- Session validation
-
-**Key Features**:
-- Secure cookie handling
-- Session persistence
-- Session cleanup
-- Multi-device support
-
-### 5. Error Handling
-
-**Location**: `error-handling/`
-
-Demonstrates error handling patterns:
+**Features:**
+- Custom error responses
 - Validation errors
-- Authentication errors
-- Field-specific errors
-- Error response formatting
+- HTTP status codes
 
-**Key Features**:
-- Structured error responses
-- Field-level error reporting
-- Error logging
-- Client-friendly messages
+---
 
-### 6. Full Integration
+### 8. **Middleware** (`middleware/`)
+Shows middleware usage and customization (legacy).
 
-**Location**: `integration/`
+**Features:**
+- Custom middleware
+- JWT validation
+- Protected routes
 
-Complete application example:
-- Full authentication flow
-- Database integration
-- Redis integration
-- Production-ready setup
+---
 
-**Key Features**:
-- Complete workflow
-- Best practices
-- Production considerations
-- Performance optimization
+## 🚀 Quick Start Guide
 
-## 🔧 Configuration Options
+### Choose Your Starting Point:
 
-### Authorization Config
+```bash
+# Beginner - Simple setup
+cd examples/minimal && go run main.go
 
-```go
-type Config struct {
-    // Core settings
-    JWTSecret   string `json:"jwt_secret" yaml:"jwt_secret"`
-    Debug       bool   `json:"debug" yaml:"debug"`
-    
-    // Database settings
-    DbClient    *gorm.DB
-    RedisClient *redis.Client
-    
-    // Domain settings
-    AuthURL     string `json:"auth_url" yaml:"auth_url"`
-    AuthDomain  string `json:"auth_domain" yaml:"auth_domain"`
-    
-    // Social providers
-    Providers   map[string]social.Provider
-}
+# Intermediate - With caching
+cd examples/with-redis && go run main.go
+
+# Advanced - With OAuth
+cd examples/with-social && go run main.go
+
+# Expert - Production setup
+cd examples/production-ready && go run main.go
 ```
+
+## 📋 Prerequisites
+
+### Minimal Requirements:
+- Go 1.21+
+- SQLite (built-in)
+
+### With Redis:
+- PostgreSQL 13+
+- Redis 6+
+
+### With Social:
+- OAuth credentials from providers
+- Google Cloud Console account
+- GitHub OAuth App
+
+### Production:
+- Docker & Docker Compose
+- PostgreSQL 15+
+- Redis 7+
+- Reverse proxy (nginx/traefik)
+
+## 🔧 Configuration
 
 ### Environment Variables
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `JWT_SECRET` | Secret key for JWT signing | ✅ | - |
-| `POSTGRES_URL` | PostgreSQL connection string | ✅ | - |
-| `REDIS_URL` | Redis connection string | ❌ | - |
-| `AUTH_DOMAIN` | Application domain | ❌ | localhost |
-| `AUTH_REDIRECT_URL` | OAuth redirect URL | ❌ | - |
-| `DEBUG` | Enable debug mode | ❌ | false |
+```bash
+# Database
+DATABASE_URL="postgres://user:pass@localhost:5432/dbname"
 
-## 🛠️ Common Use Cases
+# Redis
+REDIS_URL="localhost:6379"
 
-### 1. User Registration
+# JWT
+JWT_SECRET="your-secret-key-min-32-characters"
 
-```go
-// Create a new user
-signUpReq := &fiberauth.SignUpRequest{
-    FirstName: "John",
-    LastName:  "Doe",
-    Email:     "john@example.com",
-    Password:  "securepassword123",
-}
+# OAuth - Google
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GOOGLE_REDIRECT_URL="http://localhost:3000/auth/google/callback"
 
-response, err := auth.SignUp(signUpReq)
-if err != nil {
-    // Handle validation errors
-    if errorFields, ok := err.(*fiberauth.ErrorFields); ok {
-        fmt.Printf("Field error: %s - %s\n", errorFields.Field, errorFields.Error)
-    }
-    return
-}
+# OAuth - GitHub
+GITHUB_CLIENT_ID="your-github-client-id"
+GITHUB_CLIENT_SECRET="your-github-client-secret"
 
-// User created successfully
-fmt.Printf("User ID: %s\n", response.User.(map[string]interface{})["id"])
-fmt.Printf("Access Token: %s\n", response.Tokens.AccessToken)
+# Server
+PORT="3000"
+ENV="development"
 ```
 
-### 2. User Login
+## 📚 Learning Path
 
-```go
-// Authenticate user
-signInReq := &fiberauth.SignInRequest{
-    Email:    "john@example.com",
-    Password: "securepassword123",
-}
+### Beginner:
+1. Start with **Minimal** example
+2. Understand basic SignUp/SignIn
+3. Test with curl commands
+4. Explore JWT tokens
 
-response, err := auth.SignIn(signInReq)
-if err != nil {
-    // Handle authentication errors
-    return
-}
+### Intermediate:
+1. Move to **With Redis** example
+2. Learn about session caching
+3. Try **RBAC** for permissions
+4. Understand role hierarchies
 
-// User authenticated successfully
-fmt.Printf("Welcome, %s!\n", response.User.(map[string]interface{})["first_name"])
+### Advanced:
+1. Implement **With Social** OAuth
+2. Configure provider credentials
+3. Test OAuth flows
+4. Study **Production Ready** example
+
+### Expert:
+1. Deploy **Production Ready** setup
+2. Configure monitoring
+3. Set up CI/CD
+4. Implement custom features
+
+## 🧪 Testing Examples
+
+### Using cURL:
+
+```bash
+# Sign Up
+curl -X POST http://localhost:3000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"test123","first_name":"Test","last_name":"User"}'
+
+# Sign In
+curl -X POST http://localhost:3000/auth/signin \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"test123"}'
+
+# Access Protected Route
+curl http://localhost:3000/api/profile \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### 3. JWT Middleware
+### Using Postman:
 
-```go
-// Protect routes with JWT middleware
-app.Use(auth.JWTMiddleware())
+1. Import the collection (coming soon)
+2. Set environment variables
+3. Run authentication flows
+4. Test protected endpoints
 
-// Protected route
-app.Get("/protected", func(c fiber.Ctx) error {
-    user := c.Locals("user").(*jwt.Token)
-    return c.JSON(fiber.Map{"message": "Protected data", "user": user.Claims})
-})
+## 🐛 Common Issues
+
+### Database Connection Failed:
+```bash
+# Check if PostgreSQL is running
+pg_isready
+
+# Check connection string
+psql $DATABASE_URL
 ```
 
-### 4. Role-Based Access
+### Redis Connection Failed:
+```bash
+# Check if Redis is running
+redis-cli ping
 
-```go
-// Check user roles
-app.Get("/admin", auth.AllowOnly([]string{"admin"}), func(c fiber.Ctx) error {
-    return c.JSON(fiber.Map{"message": "Admin only"})
-})
+# Start Redis
+redis-server
 ```
 
-## 🔒 Security Best Practices
+### OAuth Not Working:
+- Verify redirect URLs in provider dashboards
+- Check environment variables are set
+- Ensure correct client ID/secret
+- Use HTTPS in production
 
-### 1. Password Security
+## 📖 Additional Resources
 
-- Use strong passwords (minimum 8 characters)
-- Implement password complexity requirements
-- Use bcrypt for password hashing
-- Never store plain-text passwords
-
-### 2. JWT Security
-
-- Use strong, unique JWT secrets
-- Set appropriate token expiration times
-- Validate tokens on every request
-- Implement token refresh mechanism
-
-### 3. Session Security
-
-- Use secure, HTTP-only cookies
-- Implement CSRF protection
-- Set appropriate session timeouts
-- Validate sessions on each request
-
-### 4. OAuth Security
-
-- Validate OAuth state parameters
-- Verify OAuth provider responses
-- Implement proper error handling
-- Use HTTPS for all OAuth flows
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **JWT Secret Not Set**
-   ```
-   Error: JWT_SECRET secret cannot be empty
-   ```
-   **Solution**: Set the `JWT_SECRET` environment variable
-
-2. **Database Connection Failed**
-   ```
-   Error: failed to connect to database
-   ```
-   **Solution**: Check your `POSTGRES_URL` and database connectivity
-
-3. **Invalid Token**
-   ```
-   Error: invalid token
-   ```
-   **Solution**: Ensure tokens are properly formatted and not expired
-
-4. **Social Provider Not Found**
-   ```
-   Error: provider google not found
-   ```
-   **Solution**: Configure the social provider in your application
-
-### Debug Mode
-
-Enable debug mode for detailed logging:
-
-```go
-config := &fiberauth.Config{
-    JWTSecret: "your-secret",
-    Debug:     true, // Enable debug logging
-}
-```
-
-## 📖 API Reference
-
-For detailed API documentation, see the main package documentation:
-
-- [Authorization Interface](https://pkg.go.dev/github.com/izetmolla/fiberauth)
-- [Configuration Options](https://pkg.go.dev/github.com/izetmolla/fiberauth#Config)
-- [Error Types](https://pkg.go.dev/github.com/izetmolla/fiberauth#ErrorFields)
+- [FiberAuth Documentation](../README.md)
+- [Architecture Guide](../ARCHITECTURE.md)
+- [API Reference](https://pkg.go.dev/github.com/izetmolla/fiberauth)
+- [Fiber Framework](https://gofiber.io)
 
 ## 🤝 Contributing
 
-When adding new examples:
+Found an issue or have a suggestion? Please open an issue!
 
-1. Follow the existing directory structure
-2. Include comprehensive documentation
-3. Add tests for your examples
-4. Update this README with new examples
-5. Follow Go best practices
+Want to add a new example? Pull requests are welcome!
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](../../LICENSE) file for details.
+Same as FiberAuth main package.

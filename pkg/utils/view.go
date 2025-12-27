@@ -1,4 +1,6 @@
-package fiberauth
+// Package utils provides utility functions for the authentication system.
+// This package contains helper functions that don't fit into other categories.
+package utils
 
 import (
 	"bytes"
@@ -15,14 +17,7 @@ import (
 //
 // Returns:
 //   - string: The rendered HTML string
-//
-// Example:
-//
-//	html := auth.RenderRedirectHTML(fiber.Map{
-//	    "jsData": `{"user": {...}, "tokens": {...}}`,
-//	})
-//	// Returns HTML that handles OAuth redirect and stores auth data
-func (a *Authorization) RenderRedirectHTML(params ...map[string]any) string {
+func RenderRedirectHTML(params ...map[string]any) string {
 	if len(params) == 0 || params[0] == nil {
 		return "Error: No parameters provided for redirect HTML."
 	}
@@ -89,3 +84,4 @@ func (a *Authorization) RenderRedirectHTML(params ...map[string]any) string {
 	}
 	return buf.String()
 }
+
