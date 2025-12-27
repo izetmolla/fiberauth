@@ -12,8 +12,7 @@ import (
 
 // Config holds the configuration for the Authorization service.
 type Config struct {
-	IsMultiNode bool `json:"is_multi_node" yaml:"is_multi_node"`
-	Debug       bool `json:"debug" yaml:"debug"` // Enable debug mode for logging and diagnostics
+	Debug bool `json:"debug" yaml:"debug"` // Enable debug mode for logging and diagnostics
 
 	// Core configuration
 	AuthURL     string `json:"auth_url" yaml:"auth_url"`     // Authorization server URL

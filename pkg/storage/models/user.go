@@ -54,12 +54,17 @@ type User struct {
 	LastName  string  `json:"last_name" gorm:"type:varchar(255)"`
 	AvatarURL string  `json:"avatar_url" gorm:"type:text"`
 	Email     string  `json:"email" gorm:"type:varchar(255)"`
-	// Roles, Metadata, Options use text/json type for cross-database compatibility
-	// PostgreSQL: jsonb, MySQL: json, SQLite: text
-	// Defaults are handled in BeforeCreate hook for SQLite compatibility
-	Roles    json.RawMessage `json:"roles" gorm:"type:text;not null"`
-	Metadata json.RawMessage `json:"metadata" gorm:"type:text;not null"`
-	Options  json.RawMessage `json:"options" gorm:"type:text;not null"`
+	// Roles, Metadata, Options use database-native JSON types for optimal performance.
+	// GORM automatically selects the best type per database:
+	// - PostgreSQL: jsonb (with indexing support)
+	// - MySQL/MariaDB: json (native JSON type)
+	// - SQLite: text (JSON stored as TEXT)
+	// - SQL Server: nvarchar(max)
+	// - Oracle: clob
+	// Defaults are handled in BeforeCreate hook for cross-database compatibility.
+	Roles    json.RawMessage `json:"roles" gorm:"not null"`
+	Metadata json.RawMessage `json:"metadata" gorm:"not null"`
+	Options  json.RawMessage `json:"options" gorm:"not null"`
 	Password *string         `json:"password" gorm:"type:varchar(255)"`
 
 	CreatedAt time.Time      `json:"created_at" gorm:"autoCreateTime"`
