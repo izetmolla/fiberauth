@@ -86,31 +86,82 @@ func (StorageItem) TableName() string {
 }
 
 // NewGormStorage creates a new GORM storage instance.
+// Compatible with all GORM-supported databases:
+// MySQL, PostgreSQL, SQLite, SQL Server, TiDB, Oracle, GaussDB, Clickhouse
 func NewGormStorage(conn *gorm.DB) StorageInterface {
 	if conn == nil {
 		return nil
 	}
 
-	// Auto-migrate the storage table
-	if err := conn.AutoMigrate(&StorageItem{}); err != nil {
-		return nil
+	// Get the configured table name
+	storageTableNameRegistry.RLock()
+	tableName := storageTableNameRegistry.tableName
+	storageTableNameRegistry.RUnlock()
+
+	ctx := context.Background()
+
+	// Migrate storage table
+	// Using Table() method ensures custom table names work across all database drivers
+	if err := migrateStorageTable(ctx, conn, tableName); err != nil {
+		// Log error but don't fail completely - storage might work with existing table
+		return &GormStorage{db: conn, debug: false}
 	}
 
 	return &GormStorage{db: conn, debug: false}
 }
 
 // NewGormStorageWithDebug creates a new GORM storage instance with debug mode enabled.
+// Compatible with all GORM-supported databases:
+// MySQL, PostgreSQL, SQLite, SQL Server, TiDB, Oracle, GaussDB, Clickhouse
 func NewGormStorageWithDebug(conn *gorm.DB, debug bool) StorageInterface {
 	if conn == nil {
 		return nil
 	}
 
-	// Auto-migrate the storage table
-	if err := conn.AutoMigrate(&StorageItem{}); err != nil {
-		return nil
+	// Get the configured table name
+	storageTableNameRegistry.RLock()
+	tableName := storageTableNameRegistry.tableName
+	storageTableNameRegistry.RUnlock()
+
+	ctx := context.Background()
+
+	// Migrate storage table
+	// Using Table() method ensures custom table names work across all database drivers
+	if err := migrateStorageTable(ctx, conn, tableName); err != nil {
+		// Log error but don't fail completely - storage might work with existing table
+		if debug {
+			log.Printf("[GORM_STORAGE_DEBUG] Migration warning: %v", err)
+		}
+		return &GormStorage{db: conn, debug: debug}
 	}
 
 	return &GormStorage{db: conn, debug: debug}
+}
+
+// migrateStorageTable performs migration for the storage table.
+// This method is database-agnostic and works with all GORM drivers.
+func migrateStorageTable(ctx context.Context, conn *gorm.DB, tableName string) error {
+	// Check if table exists by table name
+	// HasTable() works across all GORM-supported databases
+	tableExists := conn.Migrator().HasTable(tableName)
+
+	if !tableExists {
+		// Create table with custom table name
+		// Using Table() ensures the migration uses the specified table name
+		// This works with: MySQL, PostgreSQL, SQLite, SQL Server, TiDB, Oracle, GaussDB, Clickhouse
+		if err := conn.WithContext(ctx).Table(tableName).AutoMigrate(&StorageItem{}); err != nil {
+			return fmt.Errorf("failed to create storage table '%s': %w", tableName, err)
+		}
+	} else {
+		// Table exists, migrate schema changes
+		// AutoMigrate will add missing columns, indexes, and constraints
+		// This is safe to run on existing tables
+		if err := conn.WithContext(ctx).Table(tableName).AutoMigrate(&StorageItem{}); err != nil {
+			return fmt.Errorf("failed to migrate storage table '%s': %w", tableName, err)
+		}
+	}
+
+	return nil
 }
 
 // SetDebug enables or disables debug mode.

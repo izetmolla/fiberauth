@@ -3,6 +3,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,6 +51,8 @@ func (m *Manager) GetDB() *gorm.DB {
 
 // AutoMigrate checks if tables exist and creates them if they don't.
 // Uses the table names specified in the manager configuration.
+// Compatible with all GORM-supported databases:
+// MySQL, PostgreSQL, SQLite, SQL Server, TiDB, Oracle, GaussDB, Clickhouse
 //
 // Returns:
 //   - error: Error if migration fails
@@ -58,31 +61,42 @@ func (m *Manager) AutoMigrate() error {
 		return fmt.Errorf("database client is not initialized")
 	}
 
-	// Check if users table exists by table name
-	userTableExists := m.db.Migrator().HasTable(m.usersTableName)
-	if !userTableExists {
-		// Create users table with custom table name
-		if err := m.db.Table(m.usersTableName).AutoMigrate(&models.User{}); err != nil {
-			return fmt.Errorf("failed to create users table '%s': %w", m.usersTableName, err)
-		}
-	} else {
-		// Table exists, but we still need to migrate schema changes
-		if err := m.db.Table(m.usersTableName).AutoMigrate(&models.User{}); err != nil {
-			return fmt.Errorf("failed to migrate users table '%s': %w", m.usersTableName, err)
-		}
+	ctx := context.Background()
+
+	// Migrate users table
+	// Using Table() method ensures custom table names work across all database drivers
+	if err := m.migrateTable(ctx, m.usersTableName, &models.User{}); err != nil {
+		return fmt.Errorf("failed to migrate users table '%s': %w", m.usersTableName, err)
 	}
 
-	// Check if sessions table exists by table name
-	sessionTableExists := m.db.Migrator().HasTable(m.sessionTableName)
-	if !sessionTableExists {
-		// Create sessions table with custom table name
-		if err := m.db.Table(m.sessionTableName).AutoMigrate(&models.Session{}); err != nil {
-			return fmt.Errorf("failed to create sessions table '%s': %w", m.sessionTableName, err)
+	// Migrate sessions table
+	if err := m.migrateTable(ctx, m.sessionTableName, &models.Session{}); err != nil {
+		return fmt.Errorf("failed to migrate sessions table '%s': %w", m.sessionTableName, err)
+	}
+
+	return nil
+}
+
+// migrateTable performs migration for a single table.
+// This method is database-agnostic and works with all GORM drivers.
+func (m *Manager) migrateTable(ctx context.Context, tableName string, model interface{}) error {
+	// Check if table exists by table name
+	// HasTable() works across all GORM-supported databases
+	tableExists := m.db.Migrator().HasTable(tableName)
+
+	if !tableExists {
+		// Create table with custom table name
+		// Using Table() ensures the migration uses the specified table name
+		// This works with: MySQL, PostgreSQL, SQLite, SQL Server, TiDB, Oracle, GaussDB, Clickhouse
+		if err := m.db.WithContext(ctx).Table(tableName).AutoMigrate(model); err != nil {
+			return fmt.Errorf("failed to create table '%s': %w", tableName, err)
 		}
 	} else {
-		// Table exists, but we still need to migrate schema changes
-		if err := m.db.Table(m.sessionTableName).AutoMigrate(&models.Session{}); err != nil {
-			return fmt.Errorf("failed to migrate sessions table '%s': %w", m.sessionTableName, err)
+		// Table exists, migrate schema changes
+		// AutoMigrate will add missing columns, indexes, and constraints
+		// This is safe to run on existing tables
+		if err := m.db.WithContext(ctx).Table(tableName).AutoMigrate(model); err != nil {
+			return fmt.Errorf("failed to migrate table '%s': %w", tableName, err)
 		}
 	}
 
@@ -99,7 +113,8 @@ func (m *Manager) AutoMigrate() error {
 //   - error: Error if user not found or database error occurs
 func (m *Manager) FindUserByID(id any) (*models.User, error) {
 	var user models.User
-	err := m.db.Table(m.usersTableName).Where("id = ? AND deleted_at IS NULL", id).First(&user).Error
+	ctx := context.Background()
+	err := m.db.WithContext(ctx).Table(m.usersTableName).Where("id = ? AND deleted_at IS NULL", id).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
@@ -120,7 +135,8 @@ func (m *Manager) FindUserByID(id any) (*models.User, error) {
 //   - error: Error if user not found or database error occurs
 func (m *Manager) FindUserByEmail(email string, username string) (*models.User, error) {
 	var user models.User
-	query := m.db.Table(m.usersTableName)
+	ctx := context.Background()
+	query := m.db.WithContext(ctx).Table(m.usersTableName)
 
 	if email != "" {
 		// Simple check: if email contains @, treat as email, otherwise username
@@ -154,7 +170,8 @@ func (m *Manager) FindUserByEmail(email string, username string) (*models.User, 
 // Returns:
 //   - error: Error if user creation fails
 func (m *Manager) CreateUser(user *models.User) error {
-	return m.db.Table(m.usersTableName).Create(user).Error
+	ctx := context.Background()
+	return m.db.WithContext(ctx).Table(m.usersTableName).Create(user).Error
 }
 
 // GetSessionByID retrieves a session by ID from the database.
@@ -168,7 +185,8 @@ func (m *Manager) CreateUser(user *models.User) error {
 //   - error: Error if session not found or database error occurs
 func (m *Manager) GetSessionByID(sessionID string, nowTime time.Time) (*models.Session, error) {
 	var session models.Session
-	query := m.db.Table(m.sessionTableName).
+	ctx := context.Background()
+	query := m.db.WithContext(ctx).Table(m.sessionTableName).
 		Where("id = ? AND expires_at > ? AND deleted_at IS NULL", sessionID, nowTime).
 		First(&session)
 
@@ -192,7 +210,8 @@ func (m *Manager) GetSessionByID(sessionID string, nowTime time.Time) (*models.S
 //   - error: Error if database error occurs (not if user not found)
 func (m *Manager) GetUserByID(userID string) (roles, metadata, options json.RawMessage, err error) {
 	var user models.User
-	userQuery := m.db.Table(m.usersTableName).
+	ctx := context.Background()
+	userQuery := m.db.WithContext(ctx).Table(m.usersTableName).
 		Where("id = ? AND deleted_at IS NULL", userID).
 		Select("roles, metadata, options").
 		First(&user)
@@ -236,7 +255,8 @@ func (m *Manager) GetUserByID(userID string) (roles, metadata, options json.RawM
 // Returns:
 //   - error: Error if session creation fails
 func (m *Manager) CreateSession(session *models.Session) error {
-	return m.db.Table(m.sessionTableName).Create(session).Error
+	ctx := context.Background()
+	return m.db.WithContext(ctx).Table(m.sessionTableName).Create(session).Error
 }
 
 // containsAt checks if a string contains the @ character.
