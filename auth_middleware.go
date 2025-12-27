@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	jwtware "github.com/izetmolla/fiberauth/jwt"
 	"github.com/izetmolla/fiberauth/pkg/tokens"
+	"github.com/izetmolla/fiberauth/pkg/utils"
 )
 
 // UseAuth creates and returns an authentication middleware handler.
@@ -213,9 +214,9 @@ func (a *Authorization) handleMissingAuthHeader(c fiber.Ctx, session *SessionDat
 	sessionData := &SessionData{
 		ID:       sessionID,
 		UserID:   user.ID,
-		Roles:    ensureJSONField(user.Roles, "[]"),
-		Metadata: ensureJSONField(user.Metadata, "{}"),
-		Options:  ensureJSONField(user.Options, "{}"),
+		Roles:    utils.EnsureJSON(user.Roles, []string{}),
+		Metadata: utils.EnsureJSON(user.Metadata, map[string]any{}),
+		Options:  utils.EnsureJSON(user.Options, map[string]any{}),
 	}
 	a.setRedisSession(sessionData)
 

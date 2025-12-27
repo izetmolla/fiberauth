@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/izetmolla/fiberauth/pkg/storage/models"
+	"github.com/izetmolla/fiberauth/pkg/utils"
 	"github.com/izetmolla/fiberauth/social"
 )
 
@@ -70,9 +71,9 @@ func (a *Authorization) ProviderCallBack(c fiber.Ctx, providerName string) (*Aut
 	sessionData := &SessionData{
 		ID:       sessionID,
 		UserID:   foundUser.ID,
-		Roles:    ensureJSONField(foundUser.Roles, "[]"),
-		Metadata: ensureJSONField(foundUser.Metadata, "{}"),
-		Options:  ensureJSONField(foundUser.Options, "{}"),
+		Roles:    utils.EnsureJSON(foundUser.Roles, []string{}),
+		Metadata: utils.EnsureJSON(foundUser.Metadata, map[string]any{}),
+		Options:  utils.EnsureJSON(foundUser.Options, map[string]any{}),
 	}
 	a.setRedisSession(sessionData)
 

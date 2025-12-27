@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/izetmolla/fiberauth/pkg/storage/redis"
+	"github.com/izetmolla/fiberauth/pkg/utils"
 	redisclient "github.com/redis/go-redis/v9"
 )
 
@@ -40,13 +41,7 @@ func (a *Authorization) GetSessionFromRedis(sessionID string) (*SessionData, err
 		return nil, err
 	}
 
-	return &SessionData{
-		ID:       redisSession.ID,
-		UserID:   redisSession.UserID,
-		Roles:    redisSession.Roles,
-		Metadata: redisSession.Metadata,
-		Options:  redisSession.Options,
-	}, nil
+	return utils.Convert[redis.SessionData, SessionData](redisSession)
 }
 
 // SetSessionToRedis stores session data in Redis cache.
@@ -61,12 +56,9 @@ func (a *Authorization) SetSessionToRedis(session *SessionData) error {
 		return fmt.Errorf("Redis is not configured")
 	}
 
-	redisSession := &redis.SessionData{
-		ID:       session.ID,
-		UserID:   session.UserID,
-		Roles:    session.Roles,
-		Metadata: session.Metadata,
-		Options:  session.Options,
+	redisSession, err := utils.Convert[SessionData, redis.SessionData](session)
+	if err != nil {
+		return err
 	}
 
 	return a.redisManager.SetSession(redisSession)

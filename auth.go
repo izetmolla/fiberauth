@@ -50,6 +50,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/izetmolla/fiberauth/pkg/config"
+	"github.com/izetmolla/fiberauth/pkg/core"
 	"github.com/izetmolla/fiberauth/pkg/credentials"
 	"github.com/izetmolla/fiberauth/pkg/errors"
 	"github.com/izetmolla/fiberauth/pkg/session"
@@ -137,6 +138,9 @@ type Authorization struct {
 	// Raw clients (for advanced usage)
 	sqlStorage   *gorm.DB
 	redisStorage *redisclient.Client
+
+	// Lifecycle hooks for extensibility
+	hooks *core.Hooks
 }
 
 // New creates and initializes a new Authorization instance with the provided configuration.
@@ -288,6 +292,7 @@ func New(cfg *Config) (*Authorization, error) {
 		providers:            providers,
 		sqlStorage:           cfg.DbClient,
 		redisStorage:         cfg.RedisClient,
+		hooks:                core.NewHooks(),
 	}
 
 	// Run auto-migration

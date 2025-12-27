@@ -37,6 +37,13 @@ func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, 
 	request.Email = utils.SanitizeEmail(request.Email)
 	request.Username = utils.SanitizeUsername(request.Username)
 
+	// Execute before hooks
+	for _, hook := range a.hooks.BeforeSignIn {
+		if err := hook(request); err != nil {
+			return nil, &ErrorFields{Error: err, Field: "email"}
+		}
+	}
+
 	// Validate request
 	if err := a.validator.ValidateSignInEmailOrUsername(request.Email, request.Username); err != nil {
 		return nil, &ErrorFields{Error: err, Field: "email"}
@@ -76,17 +83,28 @@ func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, 
 	sessionData := &SessionData{
 		ID:       sessionID,
 		UserID:   user.ID,
-		Roles:    ensureJSONField(user.Roles, "[]"),
-		Metadata: ensureJSONField(user.Metadata, "{}"),
-		Options:  ensureJSONField(user.Options, "{}"),
+		Roles:    utils.EnsureJSON(user.Roles, []string{}),
+		Metadata: utils.EnsureJSON(user.Metadata, map[string]any{}),
+		Options:  utils.EnsureJSON(user.Options, map[string]any{}),
 	}
 	a.setRedisSession(sessionData)
 
-	return &AuthorizationResponse{
+	response := &AuthorizationResponse{
 		User:      userResponse(user),
 		SessionID: sessionID,
 		Tokens:    *tkns,
-	}, nil
+	}
+
+	// Execute after hooks
+	for _, hook := range a.hooks.AfterSignIn {
+		if err := hook(user, response); err != nil {
+			if a.Debug {
+				fmt.Printf("AfterSignIn hook error: %v\n", err)
+			}
+		}
+	}
+
+	return response, nil
 }
 
 // SignUp registers a new user with the provided credentials.
@@ -113,6 +131,13 @@ func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, 
 //	    // Handle registration error
 //	}
 func (a *Authorization) SignUp(request *SignUpRequest) (*AuthorizationResponse, *ErrorFields) {
+	// Execute before hooks
+	for _, hook := range a.hooks.BeforeSignUp {
+		if err := hook(request); err != nil {
+			return nil, &ErrorFields{Error: err, Field: "email"}
+		}
+	}
+
 	// Sanitize inputs to prevent injection and formatting issues
 	request.Email = utils.SanitizeEmail(request.Email)
 	request.Username = utils.SanitizeUsername(request.Username)
@@ -168,8 +193,24 @@ func (a *Authorization) SignUp(request *SignUpRequest) (*AuthorizationResponse, 
 		user.Username = &request.Username
 	}
 
+	// Execute before user create hooks
+	for _, hook := range a.hooks.BeforeUserCreate {
+		if err := hook(user); err != nil {
+			return nil, &ErrorFields{Error: err, Field: "email"}
+		}
+	}
+
 	if err := a.dbManager.CreateUser(user); err != nil {
 		return nil, &ErrorFields{Error: err, Field: "email"}
+	}
+
+	// Execute after user create hooks
+	for _, hook := range a.hooks.AfterUserCreate {
+		if err := hook(user); err != nil {
+			if a.Debug {
+				fmt.Printf("AfterUserCreate hook error: %v\n", err)
+			}
+		}
 	}
 
 	// Generate tokens and session
@@ -187,17 +228,28 @@ func (a *Authorization) SignUp(request *SignUpRequest) (*AuthorizationResponse, 
 	sessionData := &SessionData{
 		ID:       sessionID,
 		UserID:   user.ID,
-		Roles:    user.Roles,
-		Metadata: user.Metadata,
-		Options:  user.Options,
+		Roles:    utils.EnsureJSON(user.Roles, []string{}),
+		Metadata: utils.EnsureJSON(user.Metadata, map[string]any{}),
+		Options:  utils.EnsureJSON(user.Options, map[string]any{}),
 	}
 	a.setRedisSession(sessionData)
 
-	return &AuthorizationResponse{
+	response := &AuthorizationResponse{
 		User:      userResponse(user),
 		SessionID: sessionID,
 		Tokens:    *tkns,
-	}, nil
+	}
+
+	// Execute after hooks
+	for _, hook := range a.hooks.AfterSignUp {
+		if err := hook(user, response); err != nil {
+			if a.Debug {
+				fmt.Printf("AfterSignUp hook error: %v\n", err)
+			}
+		}
+	}
+
+	return response, nil
 }
 
 // SignOut invalidates the current user session.
@@ -340,12 +392,4 @@ func userResponse(user *models.User) map[string]any {
 		"metadata":   user.Metadata,
 		"options":    user.Options,
 	}
-}
-
-// ensureJSONField ensures a JSON field is not nil.
-func ensureJSONField(field json.RawMessage, defaultValue string) json.RawMessage {
-	if len(field) == 0 {
-		return json.RawMessage(defaultValue)
-	}
-	return field
 }
