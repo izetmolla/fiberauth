@@ -219,7 +219,16 @@ func New(cfg *Config) (*Authorization, error) {
 	models.SetSessionsTableName(sessionModelTable)
 
 	// Initialize module managers
-	dbMgr := database.NewManager(cfg.DbClient, usersModelTable, sessionModelTable)
+	usersModel := cfg.UsersModel
+	if usersModel == nil {
+		usersModel = &models.User{}
+	}
+	sessionModel := cfg.SessionModel
+	if sessionModel == nil {
+		sessionModel = &models.Session{}
+	}
+
+	dbMgr := database.NewManagerWithModels(cfg.DbClient, usersModelTable, sessionModelTable, usersModel, sessionModel)
 
 	var redisMgr *redis.Manager
 	if cfg.RedisClient != nil {

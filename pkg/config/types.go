@@ -43,6 +43,10 @@ type Config struct {
 	SessionModelTable string `json:"session_model_table" yaml:"session_model_table"` // Custom table name for sessions (default: "sessions")
 	StorageTableName  string `json:"storage_table_name" yaml:"storage_table_name"`   // Custom table name for storage items (default: "storage_items")
 
+	// Optional custom models for migration (useful for overriding field types/tags)
+	UsersModel   any `json:"-" yaml:"-"` // Custom user model for AutoMigrate (default: &models.User{})
+	SessionModel any `json:"-" yaml:"-"` // Custom session model for AutoMigrate (default: &models.Session{})
+
 	Providers []interface{} // Social providers (use []interface{} for flexibility)
 }
 

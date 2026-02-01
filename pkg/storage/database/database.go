@@ -18,6 +18,8 @@ type Manager struct {
 	db               *gorm.DB
 	usersTableName   string
 	sessionTableName string
+	usersModel       any
+	sessionModel     any
 }
 
 // NewManager creates a new database manager instance.
@@ -30,6 +32,21 @@ type Manager struct {
 // Returns:
 //   - *Manager: Database manager instance
 func NewManager(db *gorm.DB, usersTable, sessionTable string) *Manager {
+	return NewManagerWithModels(db, usersTable, sessionTable, nil, nil)
+}
+
+// NewManagerWithModels creates a new database manager instance with optional custom models.
+//
+// Parameters:
+//   - db: GORM database instance
+//   - usersTable: Custom table name for users (empty string uses default "users")
+//   - sessionTable: Custom table name for sessions (empty string uses default "sessions")
+//   - usersModel: Optional custom user model for migrations (nil uses default models.User)
+//   - sessionModel: Optional custom session model for migrations (nil uses default models.Session)
+//
+// Returns:
+//   - *Manager: Database manager instance
+func NewManagerWithModels(db *gorm.DB, usersTable, sessionTable string, usersModel, sessionModel any) *Manager {
 	if usersTable == "" {
 		usersTable = "users"
 	}
@@ -37,10 +54,19 @@ func NewManager(db *gorm.DB, usersTable, sessionTable string) *Manager {
 		sessionTable = "sessions"
 	}
 
+	if usersModel == nil {
+		usersModel = &models.User{}
+	}
+	if sessionModel == nil {
+		sessionModel = &models.Session{}
+	}
+
 	return &Manager{
 		db:               db,
 		usersTableName:   usersTable,
 		sessionTableName: sessionTable,
+		usersModel:       usersModel,
+		sessionModel:     sessionModel,
 	}
 }
 
@@ -65,12 +91,12 @@ func (m *Manager) AutoMigrate() error {
 
 	// Migrate users table
 	// Using Table() method ensures custom table names work across all database drivers
-	if err := m.migrateTable(ctx, m.usersTableName, &models.User{}); err != nil {
+	if err := m.migrateTable(ctx, m.usersTableName, m.usersModel); err != nil {
 		return fmt.Errorf("failed to migrate users table '%s': %w", m.usersTableName, err)
 	}
 
 	// Migrate sessions table
-	if err := m.migrateTable(ctx, m.sessionTableName, &models.Session{}); err != nil {
+	if err := m.migrateTable(ctx, m.sessionTableName, m.sessionModel); err != nil {
 		return fmt.Errorf("failed to migrate sessions table '%s': %w", m.sessionTableName, err)
 	}
 
@@ -257,6 +283,125 @@ func (m *Manager) GetUserByID(userID string) (roles, metadata, options json.RawM
 func (m *Manager) CreateSession(session *models.Session) error {
 	ctx := context.Background()
 	return m.db.WithContext(ctx).Table(m.sessionTableName).Create(session).Error
+}
+
+// FindUserByIDAs finds a user by ID and returns a custom model type.
+//
+// Parameters:
+//   - db: GORM database instance
+//   - tableName: User table name
+//   - id: The user ID to search for
+//
+// Returns:
+//   - *T: The found user
+//   - error: Error if user not found or database error occurs
+func FindUserByIDAs[T any](db *gorm.DB, tableName string, id any) (*T, error) {
+	var user T
+	ctx := context.Background()
+	err := db.WithContext(ctx).Table(tableName).Where("id = ? AND deleted_at IS NULL", id).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+// FindUserByEmailAs finds a user by email or username and returns a custom model type.
+//
+// Parameters:
+//   - db: GORM database instance
+//   - tableName: User table name
+//   - email: The email address to search for
+//   - username: The username to search for (optional)
+//
+// Returns:
+//   - *T: The found user
+//   - error: Error if user not found or database error occurs
+func FindUserByEmailAs[T any](db *gorm.DB, tableName string, email string, username string) (*T, error) {
+	var user T
+	ctx := context.Background()
+	query := db.WithContext(ctx).Table(tableName)
+
+	if email != "" {
+		// Simple check: if email contains @, treat as email, otherwise username
+		if containsAt(email) {
+			query = query.Where("email = ? AND deleted_at IS NULL", email)
+		} else {
+			query = query.Where("username = ? AND deleted_at IS NULL", email)
+		}
+	} else if username != "" {
+		query = query.Where("username = ? AND deleted_at IS NULL", username)
+	} else {
+		return nil, errors.New("email or username is required")
+	}
+
+	err := query.First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+// CreateUserAs creates a new user in the database using a custom model type.
+//
+// Parameters:
+//   - db: GORM database instance
+//   - tableName: User table name
+//   - user: The user to create
+//
+// Returns:
+//   - error: Error if user creation fails
+func CreateUserAs[T any](db *gorm.DB, tableName string, user *T) error {
+	ctx := context.Background()
+	return db.WithContext(ctx).Table(tableName).Create(user).Error
+}
+
+// GetSessionByIDAs retrieves a session by ID and returns a custom model type.
+//
+// Parameters:
+//   - db: GORM database instance
+//   - tableName: Session table name
+//   - sessionID: The session ID to retrieve
+//   - nowTime: Current time for expiration checks
+//
+// Returns:
+//   - *T: The session if found
+//   - error: Error if session not found or database error occurs
+func GetSessionByIDAs[T any](db *gorm.DB, tableName string, sessionID string, nowTime time.Time) (*T, error) {
+	var session T
+	ctx := context.Background()
+	query := db.WithContext(ctx).Table(tableName).
+		Where("id = ? AND expires_at > ? AND deleted_at IS NULL", sessionID, nowTime).
+		First(&session)
+
+	if query.Error != nil {
+		if errors.Is(query.Error, gorm.ErrRecordNotFound) {
+			return nil, errors.New("session not found")
+		}
+		return nil, query.Error
+	}
+
+	return &session, nil
+}
+
+// CreateSessionAs creates a new session in the database using a custom model type.
+//
+// Parameters:
+//   - db: GORM database instance
+//   - tableName: Session table name
+//   - session: The session to create
+//
+// Returns:
+//   - error: Error if session creation fails
+func CreateSessionAs[T any](db *gorm.DB, tableName string, session *T) error {
+	ctx := context.Background()
+	return db.WithContext(ctx).Table(tableName).Create(session).Error
 }
 
 // containsAt checks if a string contains the @ character.
