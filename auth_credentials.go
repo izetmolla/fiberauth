@@ -61,7 +61,6 @@ func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, 
 		return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "email"}
 	}
 	if request.Method != "ldap" {
-
 		// Verify password
 		if user.Password == nil {
 			return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
