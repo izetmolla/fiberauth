@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -110,11 +109,11 @@ func main() {
 
 		// Set default metadata
 		metadata := map[string]any{
-			"source":      "api",
-			"created_at":  time.Now().Format(time.RFC3339),
-			"signup_ip":   "127.0.0.1", // In real app, get from request
-			"newsletter":  false,
-			"marketing":   false,
+			"source":     "api",
+			"created_at": time.Now().Format(time.RFC3339),
+			"signup_ip":  "127.0.0.1", // In real app, get from request
+			"newsletter": false,
+			"marketing":  false,
 		}
 
 		metadataJSON, err := json.Marshal(metadata)
@@ -332,4 +331,3 @@ Example Usage:
 
 Watch the console logs to see hooks being executed!
 */
-
