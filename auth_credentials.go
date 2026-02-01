@@ -48,8 +48,10 @@ func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, 
 	if err := a.validator.ValidateSignInEmailOrUsername(request.Email, request.Username); err != nil {
 		return nil, &ErrorFields{Error: err, Field: "email"}
 	}
-	if err := a.validator.ValidatePassword(request.Password); err != nil {
-		return nil, &ErrorFields{Error: err, Field: "password"}
+	if request.Method != "ldap" {
+		if err := a.validator.ValidatePassword(request.Password); err != nil {
+			return nil, &ErrorFields{Error: err, Field: "password"}
+		}
 	}
 
 	// Find user by email or username
@@ -58,14 +60,16 @@ func (a *Authorization) SignIn(request *SignInRequest) (*AuthorizationResponse, 
 		// Use generic error to prevent user enumeration
 		return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "email"}
 	}
+	if request.Method != "ldap" {
 
-	// Verify password
-	if user.Password == nil {
-		return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
-	}
+		// Verify password
+		if user.Password == nil {
+			return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
+		}
 
-	if !a.passwordManager.IsValidPassword(*user.Password, request.Password) {
-		return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
+		if !a.passwordManager.IsValidPassword(*user.Password, request.Password) {
+			return nil, &ErrorFields{Error: ErrInvalidCredentials, Field: "password"}
+		}
 	}
 
 	// Generate tokens and session
