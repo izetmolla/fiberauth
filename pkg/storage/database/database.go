@@ -105,25 +105,15 @@ func (m *Manager) AutoMigrate() error {
 
 // migrateTable performs migration for a single table.
 // This method is database-agnostic and works with all GORM drivers.
+// Note: The model must implement TableName() method returning the correct table name.
+// Using db.AutoMigrate(model) directly ensures GORM's migrator uses the model's
+// TableName() method consistently, avoiding "insufficient arguments" errors that
+// can occur when combining .Table() with AutoMigrate.
 func (m *Manager) migrateTable(ctx context.Context, tableName string, model interface{}) error {
-	// Check if table exists by table name
-	// HasTable() works across all GORM-supported databases
-	tableExists := m.db.Migrator().HasTable(tableName)
-
-	if !tableExists {
-		// Create table with custom table name
-		// Using Table() ensures the migration uses the specified table name
-		// This works with: MySQL, PostgreSQL, SQLite, SQL Server, TiDB, Oracle, GaussDB, Clickhouse
-		if err := m.db.WithContext(ctx).Table(tableName).AutoMigrate(model); err != nil {
-			return fmt.Errorf("failed to create table '%s': %w", tableName, err)
-		}
-	} else {
-		// Table exists, migrate schema changes
-		// AutoMigrate will add missing columns, indexes, and constraints
-		// This is safe to run on existing tables
-		if err := m.db.WithContext(ctx).Table(tableName).AutoMigrate(model); err != nil {
-			return fmt.Errorf("failed to migrate table '%s': %w", tableName, err)
-		}
+	// AutoMigrate the model directly - GORM will use model's TableName() method
+	// This works with: MySQL, PostgreSQL, SQLite, SQL Server, TiDB, Oracle, GaussDB, Clickhouse
+	if err := m.db.WithContext(ctx).AutoMigrate(model); err != nil {
+		return fmt.Errorf("failed to migrate table '%s': %w", tableName, err)
 	}
 
 	return nil
