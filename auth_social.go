@@ -140,7 +140,7 @@ func (a *Authorization) ProvidersController(c fiber.Ctx) error {
 func (a *Authorization) ProviderLoginController(c fiber.Ctx) error {
 	authURL, err := a.ProviderLogin(c, c.Params("provider"))
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 	// Redirect the user to the social provider's authorization page
 	return c.Redirect().To(authURL)
@@ -168,4 +168,3 @@ func (a *Authorization) ProviderCallBackController(c fiber.Ctx) error {
 		"jsData": string(jsonData),
 	}))
 }
-

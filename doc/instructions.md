@@ -466,12 +466,6 @@ if err != nil {
 
 ### Error Response Helper
 
-```go
-// Use the built-in error JSON helper
-return c.Status(fiber.StatusUnauthorized).JSON(auth.ErrorJSON(err))
-// Returns: {"error": true, "message": "error message"}
-```
-
 ### Common Error Scenarios
 
 1. **Invalid Credentials**: `ErrInvalidCredentials` (prevents user enumeration)

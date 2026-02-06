@@ -66,21 +66,21 @@ func (a *Authorization) AllowOnly(roles []string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		user, ok := c.Locals("user").(*jwt.Token)
 		if !ok {
-			return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(ErrUnauthorized))
+			return a.ApiError(c, fiber.StatusUnauthorized, ErrUnauthorized, "UNAUTHORIZED")
 		}
 
 		claims, ok := user.Claims.(jwt.MapClaims)
 		if !ok {
-			return c.Status(fiber.StatusForbidden).JSON(a.ErrorJSON(fmt.Errorf("invalid token claims")))
+			return a.ApiError(c, fiber.StatusForbidden, fmt.Errorf("invalid token claims"), "FORBIDDEN")
 		}
 
 		jwtRoles, err := extractRolesFromClaims(claims)
 		if err != nil {
-			return c.Status(fiber.StatusForbidden).JSON(a.ErrorJSON(err))
+			return a.ApiError(c, fiber.StatusForbidden, err, "FORBIDDEN")
 		}
 
 		if !hasRequiredRole(roles, jwtRoles) {
-			return c.Status(fiber.StatusForbidden).JSON(a.ErrorJSON(fmt.Errorf("insufficient permissions")))
+			return a.ApiError(c, fiber.StatusForbidden, fmt.Errorf("insufficient permissions"), "FORBIDDEN")
 		}
 
 		return c.Next()
@@ -103,11 +103,11 @@ func (a *Authorization) AllowOnlyFromCookie(roles []string) fiber.Handler {
 
 		sessionData, err := a.GetSessionFromDB(cookie)
 		if err != nil {
-			return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(ErrUnauthorized))
+			return a.ApiError(c, fiber.StatusUnauthorized, ErrUnauthorized, "UNAUTHORIZED")
 		}
 
 		if !hasRequiredRoleFromJSON(roles, sessionData.Roles) {
-			return c.Status(fiber.StatusForbidden).JSON(a.ErrorJSON(fmt.Errorf("insufficient permissions")))
+			return a.ApiError(c, fiber.StatusForbidden, fmt.Errorf("insufficient permissions"), "FORBIDDEN")
 		}
 
 		return c.Next()
@@ -123,22 +123,22 @@ func (a *Authorization) handleAPIEndpoint(c fiber.Ctx, config *AuthConfig, jwtcf
 	}
 
 	if jwtcfg == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(fmt.Errorf("JWT configuration is required")))
+		return a.ApiError(c, fiber.StatusUnauthorized, fmt.Errorf("JWT configuration is required"), "UNAUTHORIZED")
 	}
 
 	jwtClaims, err := jwtcfg.GetTokenClaims(c, token)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusUnauthorized, err, "UNAUTHORIZED")
 	}
 
 	if len(config.Roles) > 0 {
 		roles, err := extractRolesFromClaims(jwtClaims)
 		if err != nil {
-			return c.Status(fiber.StatusForbidden).JSON(a.ErrorJSON(fmt.Errorf("insufficient permissions")))
+			return a.ApiError(c, fiber.StatusForbidden, fmt.Errorf("insufficient permissions"), "FORBIDDEN")
 		}
 
 		if !hasRequiredRole(config.Roles, roles) {
-			return c.Status(fiber.StatusForbidden).JSON(a.ErrorJSON(fmt.Errorf("insufficient permissions")))
+			return a.ApiError(c, fiber.StatusForbidden, fmt.Errorf("insufficient permissions"), "FORBIDDEN")
 		}
 	}
 
@@ -161,7 +161,7 @@ func (a *Authorization) handleWebEndpoint(c fiber.Ctx, config *AuthConfig) error
 	}
 
 	if !hasRequiredRoleFromJSON(config.Roles, session.Roles) {
-		return c.Status(fiber.StatusForbidden).JSON(a.ErrorJSON(fmt.Errorf("insufficient permissions")))
+		return a.ApiError(c, fiber.StatusForbidden, fmt.Errorf("insufficient permissions"), "FORBIDDEN")
 	}
 
 	return c.Next()
@@ -180,11 +180,12 @@ func (a *Authorization) handleUnauthenticatedUser(c fiber.Ctx, config *AuthConfi
 		}
 
 		if config.OnlyAPI {
-			return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(ErrUnauthorized))
+			return a.ApiError(c, fiber.StatusUnauthorized, ErrUnauthorized, "UNAUTHORIZED")
+
 		}
 		return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(redirectURL)
 	}
-	return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(ErrUnauthorized))
+	return a.ApiError(c, fiber.StatusUnauthorized, ErrUnauthorized, "UNAUTHORIZED")
 }
 
 func (a *Authorization) handleAPIWithinWeb(c fiber.Ctx, session *SessionData, sessionID string) error {
@@ -198,7 +199,7 @@ func (a *Authorization) handleAPIWithinWeb(c fiber.Ctx, session *SessionData, se
 func (a *Authorization) handleMissingAuthHeader(c fiber.Ctx, session *SessionData, sessionID string) error {
 	user, err := a.dbManager.FindUserByID(session.UserID)
 	if err != nil || user == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(ErrUnauthorized))
+		return a.ApiError(c, fiber.StatusUnauthorized, ErrUnauthorized, "UNAUTHORIZED")
 	}
 
 	accessToken, refreshToken, err := a.tokenManager.GenerateJWT(&tokens.JWTOptions{
@@ -208,7 +209,7 @@ func (a *Authorization) handleMissingAuthHeader(c fiber.Ctx, session *SessionDat
 		Roles:     user.Roles,
 	})
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusUnauthorized, err, "UNAUTHORIZED")
 	}
 
 	sessionData := &SessionData{
@@ -246,7 +247,7 @@ func (a *Authorization) handleMissingCookie(c fiber.Ctx) error {
 		return c.Redirect().Status(fiber.StatusTemporaryRedirect).To(redirectURL)
 	}
 
-	return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(fmt.Errorf("authentication required")))
+	return a.ApiError(c, fiber.StatusUnauthorized, fmt.Errorf("authentication required"), "UNAUTHORIZED")
 }
 
 func (a *Authorization) getAuthRedirectURL(c fiber.Ctx) string {

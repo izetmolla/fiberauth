@@ -103,6 +103,13 @@ var (
 	SetSessionsTableName = models.SetSessionsTableName
 )
 
+type ErrorResponse struct {
+	Error   bool   `json:"error"`
+	Message string `json:"message"`
+	Code    string `json:"code,omitempty"`
+	Details any    `json:"details,omitempty"`
+}
+
 // Authorization is the main authentication manager.
 // It coordinates between different modules (database, redis, tokens, etc.)
 type Authorization struct {
@@ -372,22 +379,38 @@ func (a *Authorization) CreateSession(userID string, ip, userAgent string, metho
 	return sessionID, nil
 }
 
-// ErrorJSON creates a standardized error response in JSON format.
-func (a *Authorization) ErrorJSON(err error, field ...string) fiber.Map {
-	message := ""
-	if err != nil {
-		message = err.Error()
+// ApiError handles API errors by returning a JSON response with error details.
+// It includes the error message, an optional code, and additional details if provided.
+//
+// Parameters:
+//   - c: Fiber context for the current HTTP request
+//   - status: HTTP status code to return (e.g., 400, 500)
+//   - err: The error to include in the response
+//   - code: An optional error code string for client-side handling
+//   - details: Optional additional details to include in the response
+//
+// Returns:
+//   - error: A JSON response with the specified status and error details
+func (cc *Authorization) ApiError(c fiber.Ctx, status int, err error, code string, details ...any) error {
+	var d any
+	if len(details) > 0 {
+		d = details[0]
 	}
-	errJSON := fiber.Map{"error": fiber.Map{"message": message}}
-	if len(field) > 0 {
-		errJSON["error"].(fiber.Map)["field"] = field[0]
-	}
-	return errJSON
+
+	return c.Status(status).JSON(ErrorResponse{
+		Error:   true,
+		Message: err.Error(),
+		Code:    code,
+		Details: d,
+	})
 }
 
 // JSONErrorString creates a JSON error string for error responses.
 func (a *Authorization) JSONErrorString(err error) string {
-	jsonBytes, err := json.Marshal(a.ErrorJSON(err))
+	jsonBytes, err := json.Marshal(&ErrorResponse{
+		Error:   true,
+		Message: err.Error(),
+	})
 	if err != nil {
 		return `{"error":{"message":"internal error"}}`
 	}

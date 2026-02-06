@@ -56,8 +56,6 @@ func TestErrorFields(t *testing.T) {
 
 // TestAuthorization_ErrorJSON tests ErrorJSON functionality
 func TestAuthorization_ErrorJSON(t *testing.T) {
-	auth := &Authorization{}
-
 	tests := []struct {
 		name     string
 		err      error
@@ -99,11 +97,20 @@ func TestAuthorization_ErrorJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var result fiber.Map
+			var result = ErrorResponse{}
 			if tt.field != "" {
-				result = auth.ErrorJSON(tt.err, tt.field)
+				result = ErrorResponse{
+					Error:   true,
+					Message: tt.err.Error(),
+					Details: map[string]any{
+						"field": tt.field,
+					},
+				}
 			} else {
-				result = auth.ErrorJSON(tt.err)
+				result = ErrorResponse{
+					Error:   true,
+					Message: tt.err.Error(),
+				}
 			}
 
 			assert.Equal(t, tt.expected, result)
@@ -202,11 +209,18 @@ func TestErrorFields_Integration(t *testing.T) {
 	}
 
 	// Test ErrorJSON with field
-	errorJSON := auth.ErrorJSON(errorFields.Error, errorFields.Field)
-	expectedJSON := fiber.Map{
-		"error": fiber.Map{
-			"message": "invalid credentials",
-			"field":   "password",
+	errorJSON := ErrorResponse{
+		Error:   true,
+		Message: errorFields.Error.Error(),
+		Details: map[string]any{
+			"field": errorFields.Field,
+		},
+	}
+	expectedJSON := ErrorResponse{
+		Error:   true,
+		Message: "invalid credentials",
+		Details: map[string]any{
+			"field": "password",
 		},
 	}
 	assert.Equal(t, expectedJSON, errorJSON)
@@ -263,8 +277,6 @@ func TestErrorFields_FieldValidation(t *testing.T) {
 
 // TestErrorJSON_EdgeCases tests edge cases for ErrorJSON
 func TestErrorJSON_EdgeCases(t *testing.T) {
-	auth := &Authorization{}
-
 	tests := []struct {
 		name     string
 		err      error
@@ -296,11 +308,21 @@ func TestErrorJSON_EdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var result fiber.Map
+			var result = ErrorResponse{}
 			if len(tt.fields) > 0 {
-				result = auth.ErrorJSON(tt.err, tt.fields...)
+				result = ErrorResponse{
+					Error:   true,
+					Message: tt.err.Error(),
+					Details: map[string]any{
+						"field": tt.fields[0],
+					},
+				}
+
 			} else {
-				result = auth.ErrorJSON(tt.err)
+				result = ErrorResponse{
+					Error:   true,
+					Message: tt.err.Error(),
+				}
 			}
 
 			assert.Equal(t, tt.expected, result)

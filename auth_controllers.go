@@ -11,9 +11,9 @@ import (
 func (a *Authorization) SignInController(c fiber.Ctx) error {
 	request := new(SignInRequest)
 	if err := c.Bind().Body(request); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusBadRequest, err, "BAD_REQUEST")
 	}
-	
+
 	if request.IpAddress == "" {
 		request.IpAddress = getRealIPAddress(c)
 	}
@@ -23,9 +23,9 @@ func (a *Authorization) SignInController(c fiber.Ctx) error {
 
 	res, err := a.SignIn(request)
 	if err != nil {
-		return handleErrorFieldsResponse(c, err, fiber.StatusOK)
+		return handleErrorFieldsResponse(c, err, fiber.StatusUnauthorized)
 	}
-	
+
 	a.SetSessionCookie(c, res.SessionID)
 	return c.JSON(res)
 }
@@ -34,14 +34,14 @@ func (a *Authorization) SignInController(c fiber.Ctx) error {
 func (a *Authorization) SignUpController(c fiber.Ctx) error {
 	request := new(SignUpRequest)
 	if err := c.Bind().Body(request); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusBadRequest, err, "BAD_REQUEST")
 	}
 
 	res, err := a.SignUp(request)
 	if err != nil {
-		return handleErrorFieldsResponse(c, err, fiber.StatusOK)
+		return handleErrorFieldsResponse(c, err, fiber.StatusUnauthorized)
 	}
-	
+
 	a.SetSessionCookie(c, res.SessionID)
 	return c.JSON(res)
 }
@@ -55,12 +55,12 @@ func (a *Authorization) SignOutController(c fiber.Ctx) error {
 			request.Token = token
 		}
 	}
-	
+
 	res, err := a.SignOut(request)
 	if err != nil {
 		return handleErrorFieldsResponse(c, err, fiber.StatusBadRequest)
 	}
-	
+
 	a.RemoveSessionCookie(c)
 	return c.JSON(res)
 }
@@ -74,7 +74,7 @@ func (a *Authorization) HandleRefreshTokenController(c fiber.Ctx) error {
 
 	accessToken, err := a.HandleRefreshToken(c)
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusUnauthorized, err, "UNAUTHORIZED")
 	}
 
 	return c.Status(fiber.StatusOK).JSON(accessToken)
@@ -84,12 +84,12 @@ func (a *Authorization) HandleRefreshTokenController(c fiber.Ctx) error {
 func (a *Authorization) CheckEmailController(c fiber.Ctx) error {
 	request := new(SignInRequest)
 	if err := c.Bind().Body(request); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusBadRequest, err, "BAD_REQUEST")
 	}
 
 	response, err := a.CheckEmail(request.Email)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 	return c.JSON(response)
 }
@@ -98,29 +98,26 @@ func (a *Authorization) CheckEmailController(c fiber.Ctx) error {
 func (a *Authorization) PasskeyBeginRegistrationController(c fiber.Ctx) error {
 	provider, err := a.GetProvider("passkey")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 
 	passkeyProvider, ok := provider.(*passkey.Provider)
 	if !ok {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(errors.New("passkey provider not found")))
+		return a.ApiError(c, fiber.StatusInternalServerError, errors.New("passkey provider not found"), "INTERNAL_SERVER_ERROR")
 	}
 
 	var req passkey.RegistrationRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(a.ErrorJSON(errors.New("invalid request body")))
+		return a.ApiError(c, fiber.StatusBadRequest, errors.New("invalid request body"), "BAD_REQUEST")
 	}
 
 	if req.UserID == "" || req.UserName == "" || req.DisplayName == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "user_id, user_name, and display_name are required",
-		})
+		return a.ApiError(c, fiber.StatusBadRequest, errors.New("user_id, user_name, and display_name are required"), "BAD_REQUEST")
 	}
 
 	response, err := passkeyProvider.BeginRegistrationEndpoint(&req)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -130,29 +127,26 @@ func (a *Authorization) PasskeyBeginRegistrationController(c fiber.Ctx) error {
 func (a *Authorization) PasskeyFinishRegistrationController(c fiber.Ctx) error {
 	provider, err := a.GetProvider("passkey")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 
 	passkeyProvider, ok := provider.(*passkey.Provider)
 	if !ok {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(errors.New("passkey provider not found")))
+		return a.ApiError(c, fiber.StatusInternalServerError, errors.New("passkey provider not found"), "INTERNAL_SERVER_ERROR")
 	}
 
 	var req passkey.FinishRegistrationRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(a.ErrorJSON(errors.New("invalid request body")))
+		return a.ApiError(c, fiber.StatusBadRequest, errors.New("invalid request body"), "BAD_REQUEST")
 	}
 
 	if req.SessionID == "" || req.UserID == "" || req.Credential == nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "session_id, user_id, and credential are required",
-		})
+		return a.ApiError(c, fiber.StatusBadRequest, errors.New("session_id, user_id, and credential are required"), "BAD_REQUEST")
 	}
 
 	response, err := passkeyProvider.FinishRegistrationEndpoint(&req)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -162,12 +156,12 @@ func (a *Authorization) PasskeyFinishRegistrationController(c fiber.Ctx) error {
 func (a *Authorization) PasskeyBeginLoginController(c fiber.Ctx) error {
 	provider, err := a.GetProvider("passkey")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 
 	passkeyProvider, ok := provider.(*passkey.Provider)
 	if !ok {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(errors.New("passkey provider not found")))
+		return a.ApiError(c, fiber.StatusInternalServerError, errors.New("passkey provider not found"), "INTERNAL_SERVER_ERROR")
 	}
 
 	userID := c.Query("user_id")
@@ -182,15 +176,12 @@ func (a *Authorization) PasskeyBeginLoginController(c fiber.Ctx) error {
 	}
 
 	if userID == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "user_id is required",
-		})
+		return a.ApiError(c, fiber.StatusBadRequest, errors.New("user_id is required"), "BAD_REQUEST")
 	}
 
 	response, err := passkeyProvider.BeginLoginEndpoint(userID)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
@@ -200,12 +191,12 @@ func (a *Authorization) PasskeyBeginLoginController(c fiber.Ctx) error {
 func (a *Authorization) PasskeyFinishLoginController(c fiber.Ctx) error {
 	provider, err := a.GetProvider("passkey")
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(err))
+		return a.ApiError(c, fiber.StatusInternalServerError, err, "INTERNAL_SERVER_ERROR")
 	}
 
 	passkeyProvider, ok := provider.(*passkey.Provider)
 	if !ok {
-		return c.Status(fiber.StatusInternalServerError).JSON(a.ErrorJSON(errors.New("passkey provider not found")))
+		return a.ApiError(c, fiber.StatusInternalServerError, errors.New("passkey provider not found"), "INTERNAL_SERVER_ERROR")
 	}
 
 	type FinishLoginRequest struct {
@@ -216,14 +207,11 @@ func (a *Authorization) PasskeyFinishLoginController(c fiber.Ctx) error {
 
 	var req FinishLoginRequest
 	if err := c.Bind().Body(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(a.ErrorJSON(errors.New("invalid request body")))
+		return a.ApiError(c, fiber.StatusBadRequest, errors.New("invalid request body"), "BAD_REQUEST")
 	}
 
 	if req.SessionID == "" || req.UserID == "" || req.Credential == nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"success": false,
-			"message": "session_id, user_id, and credential are required",
-		})
+		return a.ApiError(c, fiber.StatusBadRequest, errors.New("session_id, user_id, and credential are required"), "BAD_REQUEST")
 	}
 
 	response := fiber.Map{
@@ -245,17 +233,14 @@ func handleErrorFieldsResponse(c fiber.Ctx, err *ErrorFields, statusCode int) er
 	if statusCode == 0 {
 		statusCode = fiber.StatusOK
 	}
-
-	errorResponse := fiber.Map{
-		"error": fiber.Map{
-			"message": err.Error.Error(),
+	errorResponse := ErrorResponse{
+		Error:   true,
+		Message: err.Error.Error(),
+		Code:    "INVALID_CREDENTIALS",
+		Details: map[string]any{
+			"field": err.Field,
 		},
 	}
-
-	if err.Field != "" {
-		errorResponse["error"].(fiber.Map)["field"] = err.Field
-	}
-
 	return c.Status(statusCode).JSON(errorResponse)
 }
 
@@ -284,4 +269,3 @@ func getRealIPAddress(c fiber.Ctx) string {
 	// Fallback to direct connection IP
 	return c.IP()
 }
-
