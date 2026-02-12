@@ -22,7 +22,7 @@ type AuthService interface {
 
 	// Token operations
 	GetTokenFromHeader(c fiber.Ctx) (string, error)
-	HandleRefreshToken(c fiber.Ctx) (string, error)
+	HandleRefreshToken(c fiber.Ctx) (string, string, error)
 
 	// Configuration
 	GetJWTSecret() string

@@ -159,8 +159,9 @@ func (a *Authorization) getSessionFromDatabase(sessionID string) (*SessionData, 
 //
 // Returns:
 //   - string: New access token
+//   - string: New refresh token
 //   - error: Error if refresh fails
-func (a *Authorization) HandleRefreshToken(c fiber.Ctx) (string, error) {
+func (a *Authorization) HandleRefreshToken(c fiber.Ctx) (string, string, error) {
 	// Try to get token from header first
 	token, err := a.GetTokenFromHeader(c)
 	if err != nil {
@@ -170,16 +171,20 @@ func (a *Authorization) HandleRefreshToken(c fiber.Ctx) (string, error) {
 		}
 		var req RefreshRequest
 		if err := c.Bind().Body(&req); err != nil {
-			return "", fmt.Errorf("refresh token is required")
+			return "", TOKEN_INVALID, fmt.Errorf("refresh token is required")
 		}
 		token = req.RefreshToken
 	}
 
 	if token == "" {
-		return "", fmt.Errorf("refresh token is required")
+		return "", TOKEN_INVALID, fmt.Errorf("refresh token is required")
 	}
 
-	return a.RefreshToken(token)
+	accessToken, err := a.RefreshToken(token)
+	if err != nil {
+		return "", TOKEN_INVALID, err
+	}
+	return accessToken, "", nil
 }
 
 // GetTokenFromHeader extracts the JWT token from the Authorization header.

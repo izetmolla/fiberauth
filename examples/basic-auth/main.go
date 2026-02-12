@@ -186,11 +186,12 @@ func (b *BasicAuthExample) handleSignOut(c fiber.Ctx) error {
 
 // handleRefreshToken handles token refresh
 func (b *BasicAuthExample) handleRefreshToken(c fiber.Ctx) error {
-	token, err := b.auth.HandleRefreshToken(c)
+	token, errorCode, err := b.auth.HandleRefreshToken(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error":   true,
 			"message": "Failed to refresh token: " + err.Error(),
+			"code":    errorCode,
 		})
 	}
 

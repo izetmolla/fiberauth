@@ -72,9 +72,9 @@ func (a *Authorization) HandleRefreshTokenController(c fiber.Ctx) error {
 		return c.Next()
 	}
 
-	accessToken, err := a.HandleRefreshToken(c)
+	accessToken, errorCode, err := a.HandleRefreshToken(c)
 	if err != nil {
-		return a.ApiError(c, fiber.StatusUnauthorized, err, "UNAUTHORIZED")
+		return a.ApiError(c, fiber.StatusUnauthorized, err, errorCode)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(accessToken)

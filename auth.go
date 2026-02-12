@@ -103,6 +103,17 @@ var (
 	SetSessionsTableName = models.SetSessionsTableName
 )
 
+var (
+	INVALID_CREDENTIALS      = "INVALID_CREDENTIALS"
+	TOKEN_EXPIRED            = "TOKEN_EXPIRED"
+	TOKEN_INVALID            = "TOKEN_INVALID"
+	AUTH_REQUIRED            = "AUTH_REQUIRED"
+	INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS"
+	ROLE_NOT_ALLOWED         = "ROLE_NOT_ALLOWED"
+	API_KEY_FORBIDDEN        = "API_KEY_FORBIDDEN"
+	UNAUTHORIZED             = "UNAUTHORIZED"
+)
+
 type ErrorResponse struct {
 	Error   bool   `json:"error"`
 	Message string `json:"message"`
