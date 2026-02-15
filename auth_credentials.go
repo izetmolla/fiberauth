@@ -302,13 +302,17 @@ func (a *Authorization) RefreshToken(accessToken string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	sessionData, err := a.GetSessionFromDB(claims.SessionID)
+	if err != nil {
+		return "", err
+	}
 
 	// Generate new access token
 	newAccessToken, err := a.tokenManager.RefreshAccessToken(&tokens.JWTOptions{
 		SessionID: claims.SessionID,
 		UserID:    claims.UserID,
-		Metadata:  claims.Metadata,
-		Roles:     claims.Roles,
+		Metadata:  sessionData.Metadata,
+		Roles:     sessionData.Roles,
 	})
 	if err != nil {
 		return "", err

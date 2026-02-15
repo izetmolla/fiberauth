@@ -44,18 +44,6 @@ func CreatePassword(password string) (string, error) {
 	return credentials.CreatePassword(password)
 }
 
-// ExtractToken parses and validates a JWT token string.
-//
-// Parameters:
-//   - tokenString: The JWT token string to parse
-//
-// Returns:
-//   - *tokens.RefreshTokenClaims: The parsed token claims
-//   - error: Error if token parsing fails
-func (a *Authorization) ExtractToken(tokenString string) (*tokens.RefreshTokenClaims, error) {
-	return a.tokenManager.ExtractToken(tokenString)
-}
-
 // GetUser extracts the user claims from the provided interface.
 //
 // Parameters:

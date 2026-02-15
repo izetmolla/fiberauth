@@ -390,6 +390,12 @@ func (a *Authorization) CreateSession(userID string, ip, userAgent string, metho
 	return sessionID, nil
 }
 
+// ExtractToken parses and validates a JWT token string.
+// Returns the token claims if valid, or an error if parsing or validation fails.
+func (a *Authorization) ExtractToken(tokenString string) (*tokens.RefreshTokenClaims, error) {
+	return a.tokenManager.ExtractToken(tokenString)
+}
+
 // ApiError handles API errors by returning a JSON response with error details.
 // It includes the error message, an optional code, and additional details if provided.
 //
