@@ -70,7 +70,7 @@ func NewManager(jwtSecret, accessTokenLifetime, refreshTokenLifetime, signingMet
 	if signingMethodHMAC == "" {
 		signingMethodHMAC = "HS256"
 	}
-	
+
 	return &Manager{
 		jwtSecret:            jwtSecret,
 		accessTokenLifetime:  accessTokenLifetime,
@@ -169,7 +169,7 @@ func (m *Manager) RefreshAccessToken(opt *JWTOptions) (string, error) {
 //   - *RefreshTokenClaims: The parsed token claims
 //   - error: Error if token parsing fails
 func (m *Manager) ExtractToken(tokenString string) (*RefreshTokenClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &RefreshTokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &RefreshTokenClaims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -355,4 +355,3 @@ func GetLocalUser[T any](userInterface any) (*T, error) {
 
 	return claims, nil
 }
-

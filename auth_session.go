@@ -2,10 +2,12 @@ package fiberauth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/izetmolla/fiberauth/pkg/storage/redis"
 	"github.com/izetmolla/fiberauth/pkg/utils"
 	redisclient "github.com/redis/go-redis/v9"
@@ -182,6 +184,9 @@ func (a *Authorization) HandleRefreshToken(c fiber.Ctx) (string, string, error) 
 
 	accessToken, err := a.RefreshToken(token)
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return "", UNAUTHORIZED, errors.New("refresh token expired")
+		}
 		return "", TOKEN_INVALID, err
 	}
 	return accessToken, "", nil

@@ -296,9 +296,9 @@ func (a *Authorization) SignOut(request *SignOutRequest) (*SignOutResponse, *Err
 // Returns:
 //   - string: New access token
 //   - error: Error if refresh fails
-func (a *Authorization) RefreshToken(accessToken string) (string, error) {
+func (a *Authorization) RefreshToken(refreshToken string) (string, error) {
 	// Extract refresh token claims
-	claims, err := a.tokenManager.ExtractToken(accessToken)
+	claims, err := a.tokenManager.ExtractToken(refreshToken)
 	if err != nil {
 		return "", err
 	}
