@@ -21,6 +21,7 @@ package fiberauth
 
 import (
 	"net/http/httptest"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
@@ -30,6 +31,30 @@ import (
 
 // localsKey is where the loaded session is stored on the Fiber context.
 const localsKey = "goauth.session"
+
+// wantsJSON reports whether the client expects a JSON response, based on the
+// Accept and Content-Type headers (and the XHR hint). API/SPA/mobile clients set
+// these, so we can return a structured JSON error instead of Fiber's default
+// text/HTML, preventing JSON.parse failures on the client.
+func wantsJSON(c fiber.Ctx) bool {
+	if strings.Contains(c.Get("Accept"), "application/json") {
+		return true
+	}
+	if strings.Contains(c.Get("Content-Type"), "application/json") {
+		return true
+	}
+	return strings.EqualFold(c.Get("X-Requested-With"), "XMLHttpRequest")
+}
+
+// errorResponse renders an auth error. For JSON clients it returns
+// {"error": msg, "code": status} with the given status; otherwise it falls back
+// to Fiber's default error (text/HTML via the app error handler).
+func errorResponse(c fiber.Ctx, status int, msg string) error {
+	if wantsJSON(c) {
+		return c.Status(status).JSON(fiber.Map{"error": msg, "code": status})
+	}
+	return fiber.NewError(status, msg)
+}
 
 // Handler returns a fiber.Handler that serves every goauth action
 // (session, csrf, providers, signin, callback, signout, token). Mount it on a
@@ -65,6 +90,32 @@ func SessionFrom(c fiber.Ctx) *goauth.Session {
 		return v
 	}
 	return nil
+}
+
+// Claim reads the named claim from the session and coerces it to T. It returns
+// the value and true on success, or the zero value of T and false when the
+// session is nil, the claim is absent, or it is not assignable to T:
+//
+//	roles, ok := fiberauth.Claim[[]string](sess, "roles")
+//	uid, ok := fiberauth.Claim[string](sess, "sub")
+func Claim[T any](s *goauth.Session, key string) (T, bool) {
+	var zero T
+	if s == nil {
+		return zero, false
+	}
+	if v, ok := s.Claim(key).(T); ok {
+		return v, true
+	}
+	return zero, false
+}
+
+// ClaimOr is Claim with a fallback: it returns the typed claim when present and
+// assignable to T, otherwise the supplied default.
+func ClaimOr[T any](s *goauth.Session, key string, fallback T) T {
+	if v, ok := Claim[T](s, key); ok {
+		return v
+	}
+	return fallback
 }
 
 // SessionLoader loads the session (if any) into the context without requiring
@@ -110,20 +161,20 @@ func GuardWithConfig(a *goauth.Auth, cfg GuardConfig) fiber.Handler {
 	unauthorized := cfg.Unauthorized
 	if unauthorized == nil {
 		unauthorized = func(c fiber.Ctx) error {
-			return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+			return errorResponse(c, fiber.StatusUnauthorized, "unauthorized")
 		}
 	}
 	forbidden := cfg.Forbidden
 	if forbidden == nil {
 		forbidden = func(c fiber.Ctx) error {
-			return fiber.NewError(fiber.StatusForbidden, "forbidden")
+			return errorResponse(c, fiber.StatusForbidden, "forbidden")
 		}
 	}
 
 	return func(c fiber.Ctx) error {
 		session, err := GetSession(a, c)
 		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+			return errorResponse(c, fiber.StatusInternalServerError, err.Error())
 		}
 		if session == nil {
 			return unauthorized(c)

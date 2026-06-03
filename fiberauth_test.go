@@ -114,6 +114,35 @@ func TestFiberProtectAndBearer(t *testing.T) {
 	}
 }
 
+func TestFiberUnauthorizedJSON(t *testing.T) {
+	app := buildApp(t)
+
+	// A JSON client (Accept: application/json) must get a JSON 401 body so its
+	// response parsing never chokes on text/HTML.
+	req, _ := http.NewRequest(http.MethodGet, "/me", nil)
+	req.Header.Set("Accept", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "application/json") {
+		t.Fatalf("expected JSON content-type, got %q", ct)
+	}
+	var body struct {
+		Error string `json:"error"`
+		Code  int    `json:"code"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode json error body: %v", err)
+	}
+	if body.Code != http.StatusUnauthorized || body.Error == "" {
+		t.Fatalf("unexpected error body: %+v", body)
+	}
+}
+
 func TestFiberRoleGuard(t *testing.T) {
 	app := buildApp(t)
 
