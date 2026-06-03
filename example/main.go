@@ -18,7 +18,7 @@ import (
 
 	"github.com/izetmolla/fiberauth"
 	"github.com/izetmolla/goauth"
-	"github.com/izetmolla/goauth/providers"
+	"github.com/izetmolla/goauth/providers/credentials"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 		TrustHost: true,
 		Tokens:    goauth.TokensConfig{Enabled: true},
 		Providers: []goauth.Provider{
-			providers.Credentials(providers.CredentialsOptions{
+			credentials.New(credentials.Options{
 				Authorize: func(_ context.Context, c map[string]string, _ *http.Request) (*goauth.User, error) {
 					// Demo: any known email signs in; password ignored.
 					email := c["email"]

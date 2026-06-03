@@ -7,6 +7,9 @@ require (
 	github.com/izetmolla/goauth v0.0.1
 )
 
+// goauth is developed in the sibling module within this monorepo.
+replace github.com/izetmolla/goauth => ../goauth
+
 require (
 	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/gofiber/schema v1.7.1 // indirect
@@ -24,4 +27,3 @@ require (
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 )
-
