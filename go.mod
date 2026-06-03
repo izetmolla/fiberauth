@@ -4,11 +4,8 @@ go 1.26.3
 
 require (
 	github.com/gofiber/fiber/v3 v3.3.0
-	github.com/izetmolla/goauth v0.0.1
+	github.com/izetmolla/goauth v1.0.0
 )
-
-// goauth is developed in the sibling module within this monorepo.
-replace github.com/izetmolla/goauth => ../goauth
 
 require (
 	github.com/andybalholm/brotli v1.2.1 // indirect
