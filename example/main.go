@@ -146,10 +146,16 @@ func main() {
 	// --- Private: any authenticated user.
 	app.Get("/api/me", fiberauth.Protect(auth), func(c fiber.Ctx) error {
 		s := fiberauth.SessionFrom(c)
+		if s == nil {
+			return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+		}
 		return c.JSON(fiber.Map{"user": s.User, "roles": s.Roles()})
 	})
 	app.Get("/api/private", fiberauth.Protect(auth), func(c fiber.Ctx) error {
 		s := fiberauth.SessionFrom(c)
+		if s == nil || s.User == nil {
+			return fiber.NewError(fiber.StatusUnauthorized, "unauthorized")
+		}
 		return c.JSON(fiber.Map{
 			"area":    "private",
 			"message": "Welcome to your dashboard, " + s.User.Name + ".",
